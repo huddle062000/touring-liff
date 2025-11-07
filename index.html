@@ -38,13 +38,13 @@
   </script>
 
   <!-- Google Maps API -->
+  <!-- Google Maps API（initMapを自動実行させる版） -->
   <script>
-    const GOOGLE_MAPS_API_KEY = "AIzaSyBlN9ik-Y3CpEy3Uw9hXfBq0m2AoZWx_oM"; // ← ここはあとでGoogleの鍵に変える
-    const loaderUrl = `https://maps.googleapis.com/maps/api/js?key=${GOOGLE_MAPS_API_KEY}&libraries=places&language=ja`; 
-    const s = document.createElement('script');
-    s.src = loaderUrl; s.async = true; s.defer = true;
-    document.head.appendChild(s);
+    const GOOGLE_MAPS_API_KEY = "AIzaSyBlN9ik-Y3CpEy3Uw9hXfBq0m2AoZWx_oM";
   </script>
+  <script
+    src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBlN9ik-Y3CpEy3Uw9hXfBq0m2AoZWx_oM&libraries=places&language=ja&callback=initMap"
+    async defer></script>
 
   <script>
   let map, directionsService, directionsRenderer;
@@ -79,4 +79,5 @@
   </script>
 </body>
 </html>
+
 
