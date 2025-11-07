@@ -93,13 +93,42 @@ if (status === 'OK') {
     });
   }
 
-  async function shareOnLINE() {
-    if (!window._shareText) { alert('ルートを作ってから押してください'); return; }
-    await liff.shareTargetPicker([{ type: 'text', text: window._shareText }]);
+  async function shareOnLINE() // ===== 共有ボタン処理（詳しくエラー表示） =====
+async function shareOnLINE() {
+  try {
+    // ① LINEアプリの中で開いているか
+    if (!liff.isInClient()) {
+      alert('【共有できません】\nLINEアプリ内で開いてください。\n（外部ブラウザでは動作しません）');
+      return;
+    }
+
+    // ② 共有APIが使える環境か
+    if (!liff.isApiAvailable('shareTargetPicker')) {
+      alert('【共有できません】\nこの端末のLINEでは共有APIが使えません。\nLINEアプリを最新に更新して再試行してください。');
+      return;
+    }
+
+    // ③ まずルート作成が済んでいるか
+    if (!window._shareText) {
+      alert('先に「ルートを作る」を押して、経路を作成してください。');
+      return;
+    }
+
+    // ④ 共有（ユーザーがキャンセルした場合は res が undefined）
+    const res = await liff.shareTargetPicker([{ type: 'text', text: window._shareText }]);
+    if (res) {
+      alert('送信しました！');
+    }
+  } catch (e) {
+    // ⑤ 例外時に内容を表示
+    alert('共有に失敗しました：\n' + (e?.message || String(e)));
   }
+}
+
   </script>
 </body>
 </html>
+
 
 
 
