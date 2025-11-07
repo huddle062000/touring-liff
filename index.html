@@ -24,6 +24,13 @@
     <button id="shareBtn" disabled>LINEで共有</button>
   </div>
   <div id="map"></div>
+  <!-- 距離・時間の表示エリア（追加） -->
+  <div class="panel" style="padding-top:8px">
+  <div id="summary" style="font-size:14px;line-height:1.6;color:#333"></div>
+</div>
+<div class="panel" style="padding-top:8px">
+  <div id="summary" style="font-size:14px;line-height:1.6;color:#333"></div>
+</div>
 
   <!-- LINE SDK -->
   <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
@@ -64,11 +71,25 @@
     if (!start || !end) { alert('出発地と目的地を入力してください'); return; }
     const req = { origin: start, destination: end, travelMode: google.maps.TravelMode.DRIVING };
     directionsService.route(req, (result, status) => {
-      if (status === 'OK') {
-        directionsRenderer.setDirections(result);
-        const leg = result.routes[0].legs[0];
-        window._shareText = `出発地: ${leg.start_address}\n目的地: ${leg.end_address}\n距離: ${leg.distance.text}\n時間: ${leg.duration.text}`;
-      } else { alert('ルートを作れませんでした'); }
+if (status === 'OK') {
+  directionsRenderer.setDirections(result);
+  const leg = result.routes[0].legs[0];
+
+  // ここで画面に表示（追加）
+  const s = document.getElementById('summary');
+  s.textContent = `距離: ${leg.distance.text}　時間: ${leg.duration.text}`;
+
+  // 共有文も更新（既存）
+  window._shareText =
+    `出発地: ${leg.start_address}\n目的地: ${leg.end_address}\n距離: ${leg.distance.text}\n時間: ${leg.duration.text}`;
+
+  // 共有ボタンを有効化（追加）
+  document.getElementById('shareBtn').disabled = false;
+
+} else {
+  alert('ルートを作れませんでした');
+  document.getElementById('summary').textContent = '';
+}
     });
   }
 
@@ -79,5 +100,6 @@
   </script>
 </body>
 </html>
+
 
 
