@@ -55,6 +55,7 @@
 
     <button id="makeRoute">ルートを作る</button>
     <button id="shareBtn" disabled>LINEで共有</button>
+    <button id="navBtn" disabled>Googleナビで開く</button>
   </div>
 
   <div id="map"></div>
@@ -79,7 +80,6 @@
   <script>
     let map, directionsService, directionsRenderer;
     let geocoder, currentMarker;
-    const GOOGLE_MAPS_API_KEY = "AIzaSyBlN9ik-Y3CpEy3Uw9hXfBq0m2AoZWx_oM";
   </script>
   <script
     src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBlN9ik-Y3CpEy3Uw9hXfBq0m2AoZWx_oM&libraries=places&language=ja&callback=initMap"
@@ -89,6 +89,7 @@
     document.getElementById('makeRoute').addEventListener('click', makeRoute);
     document.getElementById('shareBtn').addEventListener('click', shareOnLINE);
     document.getElementById('btn-loc').addEventListener('click', fillWithCurrentLocation);
+    document.getElementById('navBtn').addEventListener('click', openNavigation);
 
     function initMap() {
       map = new google.maps.Map(document.getElementById('map'), { center: { lat: 35.0116, lng: 135.7681 }, zoom: 9 });
@@ -147,7 +148,6 @@
       directionsService.route(req, (result, status) => {
         if (status === 'OK') {
           directionsRenderer.setDirections(result);
-          // ★ 成功時に全画面化
           document.body.classList.add('fullmap');
           if (window.google && map) google.maps.event.trigger(map, 'resize');
 
@@ -166,36 +166,18 @@
             `&origin=${encodeURIComponent(leg.start_address)}` +
             `&destination=${encodeURIComponent(leg.end_address)}` +
             `&travelmode=driving${avoidStr}`;
+          
+          // GoogleナビURL（アプリでナビ起動）
+          const gmapsNavUrl =
+            'https://www.google.com/maps/dir/?api=1' +
+            `&origin=${encodeURIComponent(leg.start_address)}` +
+            `&destination=${encodeURIComponent(leg.end_address)}` +
+            `&travelmode=driving&dir_action=navigate`;
 
-          window._sharePayload = {
-            text:
-              `出発地: ${leg.start_address}\n` +
-              `目的地: ${leg.end_address}\n` +
-              `距離: ${leg.distance.text}\n` +
-              `時間: ${leg.duration.text}\n` +
-              `設定: 高速=${avoidHighways ? '使わない' : '使う'} / 有料=${avoidTolls ? '使わない' : '使う'}\n\n` +
-              `ルートを見る: ${gmapsUrl}`,
-            gmapsUrl,
-            start: {
-              title: '出発地',
-              address: leg.start_address,
-              lat: leg.start_location.lat(),
-              lng: leg.start_location.lng(),
-            },
-            end: {
-              title: '目的地',
-              address: leg.end_address,
-              lat: leg.end_location.lat(),
-              lng: leg.end_location.lng(),
-            }
-          };
-
-          window._shareText =
-            `出発地: ${leg.start_address}\n目的地: ${leg.end_address}\n距離: ${leg.distance.text}\n時間: ${leg.duration.text}\n` +
-            `設定: 高速=${avoidHighways ? '使わない' : '使う'} / 有料=${avoidTolls ? '使わない' : '使う'}\n\n` +
-            `ルートを見る: ${gmapsUrl}`;
+          window._sharePayload = { text: '', gmapsUrl, gmapsNavUrl };
 
           document.getElementById('shareBtn').disabled = false;
+          document.getElementById('navBtn').disabled = false;
 
         } else {
           alert('ルートを作れませんでした');
@@ -204,26 +186,21 @@
       });
     }
 
+    // Googleナビボタン処理
+    function openNavigation() {
+      if (!window._sharePayload?.gmapsNavUrl) {
+        alert('先にルートを作成してください。');
+        return;
+      }
+      window.open(window._sharePayload.gmapsNavUrl, '_blank');
+    }
+
     async function shareOnLINE() {
       try {
         const payload = window._sharePayload;
         if (!payload) { alert('先に「ルートを作る」で経路を作成してください。'); return; }
 
-        if (liff.isInClient() && liff.isApiAvailable('shareTargetPicker')) {
-          try {
-            const res = await liff.shareTargetPicker([
-              { type: 'location', title: payload.start.title, address: payload.start.address, latitude: payload.start.lat, longitude: payload.start.lng },
-              { type: 'location', title: payload.end.title,   address: payload.end.address,   latitude: payload.end.lat,   longitude: payload.end.lng },
-              { type: 'text', text: `ルートを見る：\n${payload.gmapsUrl}` }
-            ]);
-            if (res) alert('送信しました！');
-            return;
-          } catch (e) {
-            console.warn('location送信に失敗。テキストにフォールバックします:', e);
-          }
-        }
-
-        const shareUrl = 'https://line.me/R/share?text=' + encodeURIComponent(payload.text);
+        const shareUrl = 'https://line.me/R/share?text=' + encodeURIComponent(payload.gmapsUrl);
         window.open(shareUrl, '_blank');
       } catch (e) {
         alert('共有に失敗しました：\n' + (e?.message || String(e)));
@@ -237,6 +214,5 @@
       window.scrollTo({ top: 0, behavior: 'smooth' });
     });
   </script>
-
 </body>
 </html>
