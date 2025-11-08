@@ -152,6 +152,12 @@
           const leg = result.routes[0].legs[0];
 
           const s = document.getElementById('summary');
+          if (status === 'OK') {
+  directionsRenderer.setDirections(result);
+  document.body.classList.add('fullmap');   // ← これを追加！
+  const leg = result.routes[0].legs[0];
+  ...
+}
           const optTxt = `（高速: ${avoidHighways ? '使わない' : '使う'} / 有料: ${avoidTolls ? '使わない' : '使う'}）`;
           s.textContent = `距離: ${leg.distance.text}　時間: ${leg.duration.text} ${optTxt}`;
 
@@ -240,9 +246,10 @@
   });
 </script>
 
-</script>
+
 </body>
 </html>
+
 
 
 
