@@ -91,7 +91,7 @@ if (status === 'OK') {
     });
   }
 
-// ===== 共有ボタン（Share Target Picker → 共有URL フォールバック） =====
+// ===== 共有ボタン（スマホ/PC 両対応版） =====
 async function shareOnLINE() {
   try {
     if (!window._shareText) {
@@ -99,17 +99,16 @@ async function shareOnLINE() {
       return;
     }
 
-    // 1) LINEアプリ内 かつ Share Target Picker が使える場合 → そのまま共有
+    // 1) LINEアプリ内でShare Target Pickerが使える場合
     if (liff.isInClient() && liff.isApiAvailable('shareTargetPicker')) {
       const res = await liff.shareTargetPicker([{ type: 'text', text: window._shareText }]);
       if (res) alert('送信しました！');
       return;
     }
 
-    // 2) 使えない端末/外部ブラウザ → フォールバック（共有URL）
-    const url = 'https://line.me/R/share?text=' + encodeURIComponent(window._shareText);
-    // LINEアプリ内でも外部ブラウザでも開けるように external:true を指定
-    liff.openWindow({ url, external: true });
+    // 2) それ以外（PCブラウザ、外部ブラウザなど）は共有URLで開く
+    const shareUrl = 'https://line.me/R/share?text=' + encodeURIComponent(window._shareText);
+    window.open(shareUrl, '_blank'); // ← PCでも動作（新しいタブでLINE共有ページ）
   } catch (e) {
     alert('共有に失敗しました：\n' + (e?.message || String(e)));
   }
@@ -118,6 +117,7 @@ async function shareOnLINE() {
   </script>
 </body>
 </html>
+
 
 
 
