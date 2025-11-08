@@ -231,53 +231,19 @@
     }
   </script>
   <script>
-  // 既存のリスナー群の下あたりに追加
   document.getElementById('back').addEventListener('click', () => {
     document.body.classList.remove('fullmap');
-    // 必要があればスクロール位置を戻す
+    if (window.google && map) {
+      google.maps.event.trigger(map, 'resize');
+    }
     window.scrollTo({ top: 0, behavior: 'smooth' });
   });
+</script>
 
-  async function makeRoute() {
-    const start = document.getElementById('start').value;
-    const end   = document.getElementById('end').value;
-    if (!start || !end) { alert('出発地と目的地を入力してください'); return; }
-
-    const avoidHighways = document.getElementById('opt-avoid-highways').checked;
-    const avoidTolls    = document.getElementById('opt-avoid-tolls').checked;
-
-    const req = {
-      origin: start,
-      destination: end,
-      travelMode: google.maps.TravelMode.DRIVING,
-      avoidHighways,
-      avoidTolls
-    };
-
-    directionsService.route(req, (result, status) => {
-      if (status === 'OK') {
-        directionsRenderer.setDirections(result);
-
-        // ★ ここで全画面化（前面に地図だけ）に切り替え
-        document.body.classList.add('fullmap');
-
-        const leg = result.routes[0].legs[0];
-        const s = document.getElementById('summary');
-        const optTxt = `（高速: ${avoidHighways ? '使わない' : '使う'} / 有料: ${avoidTolls ? '使わない' : '使う'}）`;
-        s.textContent = `距離: ${leg.distance.text}　時間: ${leg.duration.text} ${optTxt}`;
-
-        // 以降はあなたの既存コード（共有用URL生成など）そのままでOK
-        /* ... 既存の gmapsUrl 作成＆ window._sharePayload の設定 ... */
-
-      } else {
-        alert('ルートを作れませんでした');
-        document.getElementById('summary').textContent = '';
-      }
-    });
-  }
 </script>
 </body>
 </html>
+
 
 
 
