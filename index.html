@@ -26,6 +26,28 @@
       padding: 8px 12px; display: none;
     }
     body.fullmap #back { display: inline-block; }
+
+    /* 全画面時に出すフローティング操作ボタン */
+    #fab {
+      position: fixed;
+      right: 12px;
+      bottom: 16px;
+      display: none;
+      z-index: 1001;
+      gap: 8px;
+    }
+    #fab button {
+      padding: 10px 14px;
+      border: none;
+      border-radius: 20px;
+      background: #06c755;
+      color: #fff;
+      font-size: 14px;
+      box-shadow: 0 2px 8px rgba(0,0,0,.2);
+      white-space: nowrap;
+      width: auto; /* フローティングは幅自動 */
+    }
+    body.fullmap #fab { display: flex; }
   </style>
 </head>
 <body>
@@ -33,6 +55,12 @@
 
   <!-- 全画面時のみ見える戻るボタン -->
   <button id="back" type="button">戻る</button>
+
+  <!-- 全画面時に表示されるフローティング操作 -->
+  <div id="fab">
+    <button id="navBtnFab" disabled>Googleナビ開始</button>
+    <button id="shareBtnFab" disabled>LINEで共有</button>
+  </div>
 
   <div class="panel">
     <div style="display:flex; gap:8px; align-items:center;">
@@ -54,6 +82,7 @@
     </div>
 
     <button id="makeRoute">ルートを作る</button>
+    <!-- パネルにもボタンを残しておく（全画面時は隠れる） -->
     <button id="shareBtn" disabled>LINEで共有</button>
     <button id="navBtn" disabled>Googleナビで開く</button>
   </div>
@@ -72,6 +101,7 @@
       await liff.init({ liffId: LIFF_ID });
       const canShare = liff.isApiAvailable('shareTargetPicker');
       document.getElementById('shareBtn').disabled = !canShare;
+      document.getElementById('shareBtnFab').disabled = !canShare;
     }
     initLIFF();
   </script>
@@ -86,10 +116,16 @@
     async defer></script>
 
   <script>
+    // クリックリスナー
     document.getElementById('makeRoute').addEventListener('click', makeRoute);
     document.getElementById('shareBtn').addEventListener('click', shareOnLINE);
-    document.getElementById('btn-loc').addEventListener('click', fillWithCurrentLocation);
     document.getElementById('navBtn').addEventListener('click', openNavigation);
+
+    document.getElementById('btn-loc').addEventListener('click', fillWithCurrentLocation);
+
+    // フローティング側のリスナー
+    document.getElementById('shareBtnFab').addEventListener('click', shareOnLINE);
+    document.getElementById('navBtnFab').addEventListener('click', openNavigation);
 
     function initMap() {
       map = new google.maps.Map(document.getElementById('map'), { center: { lat: 35.0116, lng: 135.7681 }, zoom: 9 });
@@ -166,7 +202,7 @@
             `&origin=${encodeURIComponent(leg.start_address)}` +
             `&destination=${encodeURIComponent(leg.end_address)}` +
             `&travelmode=driving${avoidStr}`;
-          
+
           // GoogleナビURL（アプリでナビ起動）
           const gmapsNavUrl =
             'https://www.google.com/maps/dir/?api=1' +
@@ -174,10 +210,23 @@
             `&destination=${encodeURIComponent(leg.end_address)}` +
             `&travelmode=driving&dir_action=navigate`;
 
-          window._sharePayload = { text: '', gmapsUrl, gmapsNavUrl };
+          window._sharePayload = {
+            text:
+              `出発地: ${leg.start_address}\n` +
+              `目的地: ${leg.end_address}\n` +
+              `距離: ${leg.distance.text}\n` +
+              `時間: ${leg.duration.text}\n` +
+              `設定: 高速=${avoidHighways ? '使わない' : '使う'} / 有料=${avoidTolls ? '使わない' : '使う'}\n\n` +
+              `ルートを見る: ${gmapsUrl}`,
+            gmapsUrl,
+            gmapsNavUrl
+          };
 
+          // パネル＆フローティング双方のボタンを有効化
           document.getElementById('shareBtn').disabled = false;
-          document.getElementById('navBtn').disabled = false;
+          document.getElementById('navBtn').disabled   = false;
+          document.getElementById('shareBtnFab').disabled = false;
+          document.getElementById('navBtnFab').disabled   = false;
 
         } else {
           alert('ルートを作れませんでした');
@@ -186,7 +235,7 @@
       });
     }
 
-    // Googleナビボタン処理
+    // Googleナビボタン処理（パネル／フローティング共通）
     function openNavigation() {
       if (!window._sharePayload?.gmapsNavUrl) {
         alert('先にルートを作成してください。');
@@ -195,12 +244,25 @@
       window.open(window._sharePayload.gmapsNavUrl, '_blank');
     }
 
+    // 共有（パネル／フローティング共通）
     async function shareOnLINE() {
       try {
         const payload = window._sharePayload;
         if (!payload) { alert('先に「ルートを作る」で経路を作成してください。'); return; }
 
-        const shareUrl = 'https://line.me/R/share?text=' + encodeURIComponent(payload.gmapsUrl);
+        // LIFF内なら shareTargetPicker、外ならシンプル共有URL
+        if (window.liff && liff.isInClient() && liff.isApiAvailable('shareTargetPicker')) {
+          try {
+            const res = await liff.shareTargetPicker([
+              { type: 'text', text: payload.text }
+            ]);
+            if (res) alert('送信しました！');
+            return;
+          } catch (e) {
+            console.warn('shareTargetPickerに失敗。URL共有にフォールバック:', e);
+          }
+        }
+        const shareUrl = 'https://line.me/R/share?text=' + encodeURIComponent(payload.text);
         window.open(shareUrl, '_blank');
       } catch (e) {
         alert('共有に失敗しました：\n' + (e?.message || String(e)));
@@ -211,8 +273,12 @@
     document.getElementById('back').addEventListener('click', () => {
       document.body.classList.remove('fullmap');
       if (window.google && map) google.maps.event.trigger(map, 'resize');
+      // フローティング側は一旦無効化しておく
+      document.getElementById('shareBtnFab').disabled = true;
+      document.getElementById('navBtnFab').disabled   = true;
       window.scrollTo({ top: 0, behavior: 'smooth' });
     });
   </script>
 </body>
 </html>
+
