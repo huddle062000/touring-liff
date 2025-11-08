@@ -13,27 +13,28 @@
     input { padding: 8px; width: 100%; margin-bottom: 8px; border: 1px solid #ccc; border-radius: 6px; }
     button { padding: 10px; font-size: 16px; border: none; border-radius: 8px; background: #06c755; color: white; width: 100%; }
     button:disabled { opacity: 0.5; }
-      /* 既存のstyleの末尾に追加 */
-  body.fullmap header,
-  body.fullmap .panel { display: none; }
 
-  body.fullmap #map { height: 100vh !important; }
+    /* 全画面表示用スタイル */
+    body.fullmap header,
+    body.fullmap .panel { display: none; }
 
-  #back { 
-    position: fixed; top: 10px; left: 10px; z-index: 1000;
-    background: #06c755; color: #fff; border: none; border-radius: 8px;
-    padding: 8px 12px; display: none;
-  }
-  body.fullmap #back { display: inline-block; }
+    body.fullmap #map { height: 100vh !important; }
+
+    #back { 
+      position: fixed; top: 10px; left: 10px; z-index: 1000;
+      background: #06c755; color: #fff; border: none; border-radius: 8px;
+      padding: 8px 12px; display: none;
+    }
+    body.fullmap #back { display: inline-block; }
   </style>
 </head>
 <body>
   <header><h1>ツーリングルート共有</h1></header>
-    <!-- 追加：全画面時のみ見える戻るボタン -->
+
+  <!-- 全画面時のみ見える戻るボタン -->
   <button id="back" type="button">戻る</button>
 
   <div class="panel">
-    <!-- 出発地入力 + 現在地ボタン（重複なし・ID一意） -->
     <div style="display:flex; gap:8px; align-items:center;">
       <input id="start" placeholder="出発地を入力（例：京都駅）" style="flex:1">
       <button type="button" id="btn-loc" style="width:auto; white-space:nowrap;">現在地</button>
@@ -41,7 +42,6 @@
 
     <input id="end" placeholder="目的地を入力（例：美山 かやぶきの里）">
 
-    <!-- 経路オプション -->
     <div style="display:flex; gap:12px; align-items:center; margin:6px 0 10px">
       <label style="display:flex; gap:6px; align-items:center;">
         <input type="checkbox" id="opt-avoid-highways">
@@ -59,7 +59,6 @@
 
   <div id="map"></div>
 
-  <!-- 距離・時間の表示エリア -->
   <div class="panel" style="padding-top:8px">
     <div id="summary" style="font-size:14px;line-height:1.6;color:#333"></div>
   </div>
@@ -76,10 +75,10 @@
     initLIFF();
   </script>
 
-  <!-- Google Maps API（initMapコールバック付き） -->
+  <!-- Google Maps API -->
   <script>
     let map, directionsService, directionsRenderer;
-    let geocoder, currentMarker; // 住所変換と現在地マーカー
+    let geocoder, currentMarker;
     const GOOGLE_MAPS_API_KEY = "AIzaSyBlN9ik-Y3CpEy3Uw9hXfBq0m2AoZWx_oM";
   </script>
   <script
@@ -95,11 +94,10 @@
       map = new google.maps.Map(document.getElementById('map'), { center: { lat: 35.0116, lng: 135.7681 }, zoom: 9 });
       directionsService = new google.maps.DirectionsService();
       directionsRenderer = new google.maps.DirectionsRenderer({ map });
-      geocoder = new google.maps.Geocoder(); // 逆ジオコーディング用
+      geocoder = new google.maps.Geocoder();
     }
     window.initMap = initMap;
 
-    // 現在地ボタン処理
     function fillWithCurrentLocation() {
       if (!navigator.geolocation) { alert('この端末では位置情報が使えません'); return; }
 
@@ -132,11 +130,11 @@
 
     async function makeRoute() {
       const start = document.getElementById('start').value;
-      const end = document.getElementById('end').value;
+      const end   = document.getElementById('end').value;
       if (!start || !end) { alert('出発地と目的地を入力してください'); return; }
 
       const avoidHighways = document.getElementById('opt-avoid-highways').checked;
-      const avoidTolls = document.getElementById('opt-avoid-tolls').checked;
+      const avoidTolls    = document.getElementById('opt-avoid-tolls').checked;
 
       const req = {
         origin: start,
@@ -149,15 +147,12 @@
       directionsService.route(req, (result, status) => {
         if (status === 'OK') {
           directionsRenderer.setDirections(result);
-          const leg = result.routes[0].legs[0];
+          // ★ 成功時に全画面化
+          document.body.classList.add('fullmap');
+          if (window.google && map) google.maps.event.trigger(map, 'resize');
 
+          const leg = result.routes[0].legs[0];
           const s = document.getElementById('summary');
-          if (status === 'OK') {
-  directionsRenderer.setDirections(result);
-  document.body.classList.add('fullmap');   // ← これを追加！
-  const leg = result.routes[0].legs[0];
-  ...
-}
           const optTxt = `（高速: ${avoidHighways ? '使わない' : '使う'} / 有料: ${avoidTolls ? '使わない' : '使う'}）`;
           s.textContent = `距離: ${leg.distance.text}　時間: ${leg.duration.text} ${optTxt}`;
 
@@ -209,7 +204,6 @@
       });
     }
 
-    // 共有：位置情報 → テキストURLにフォールバック
     async function shareOnLINE() {
       try {
         const payload = window._sharePayload;
@@ -235,27 +229,14 @@
         alert('共有に失敗しました：\n' + (e?.message || String(e)));
       }
     }
-  </script>
-  <script>
-  document.getElementById('back').addEventListener('click', () => {
-    document.body.classList.remove('fullmap');
-    if (window.google && map) {
-      google.maps.event.trigger(map, 'resize');
-    }
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  });
-</script>
 
+    // 戻るボタン処理
+    document.getElementById('back').addEventListener('click', () => {
+      document.body.classList.remove('fullmap');
+      if (window.google && map) google.maps.event.trigger(map, 'resize');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    });
+  </script>
 
 </body>
 </html>
-
-
-
-
-
-
-
-
-
-
