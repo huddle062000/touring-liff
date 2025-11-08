@@ -20,7 +20,15 @@
   <div class="panel">
 <!-- 出発地入力 + 現在地ボタン -->
 <div style="display:flex; gap:8px; align-items:center;">
+ <!-- 出発地入力 + 現在地ボタン -->
+<div style="display:flex; gap:8px; align-items:center;">
+ <!-- 出発地入力 + 現在地ボタン -->
+<div style="display:flex; gap:8px; align-items:center;">
   <input id="start" placeholder="出発地を入力（例：京都駅）" style="flex:1">
+  <button type="button" id="btn-loc" style="width:auto; white-space:nowrap;">現在地</button>
+</div>
+  <button type="button" id="btn-loc" style="width:auto; white-space:nowrap;">現在地</button>
+</div>
   <button type="button" id="btn-loc" style="width:auto; white-space:nowrap;">現在地</button>
 </div>
     <input id="end" placeholder="目的地を入力（例：美山 かやぶきの里）">
@@ -60,6 +68,9 @@
   <!-- Google Maps API -->
   <!-- Google Maps API（initMapを自動実行させる版） -->
   <script>
+    let map, directionsService, directionsRenderer;
+let geocoder, currentMarker; // ← 追加
+
     const GOOGLE_MAPS_API_KEY = "AIzaSyBlN9ik-Y3CpEy3Uw9hXfBq0m2AoZWx_oM";
   </script>
   <script
@@ -67,17 +78,68 @@
     async defer></script>
 
   <script>
-  let map, directionsService, directionsRenderer;
+let map, directionsService, directionsRenderer;
+let geocoder, currentMarker; // ← 追加（住所変換と現在地マーカー用）
   document.getElementById('makeRoute').addEventListener('click', makeRoute);
   document.getElementById('shareBtn').addEventListener('click', shareOnLINE);
 
-  function initMap() {
-    map = new google.maps.Map(document.getElementById('map'), { center: { lat: 35.0116, lng: 135.7681 }, zoom: 9 });
-    directionsService = new google.maps.DirectionsService();
-    directionsRenderer = new google.maps.DirectionsRenderer({ map });
-  }
+function initMap() {
+ map = new google.maps.Map(document.getElementById('map'), { center: { lat: 35.0116, lng: 135.7681 }, zoom: 9 });
+  directionsService = new google.maps.DirectionsService();
+  directionsRenderer = new google.maps.DirectionsRenderer({ map });
+  geocoder = new google.maps.Geocoder(); // ← 追加
+}
   window.initMap = initMap;
+// 「現在地」ボタンのクリックで処理開始
+document.getElementById('btn-loc').addEventListener('click', fillWithCurrentLocation);
 
+// 現在地を取得して「出発地」欄に自動入力
+function fillWithCurrentLocation() {
+  if (!navigator.geolocation) {
+    alert('この端末では位置情報が使えません');
+    return;
+  }
+
+  navigator.geolocation.getCurrentPosition(
+    (pos) => {
+      const lat = pos.coords.latitude;
+      const lng = pos.coords.longitude;
+      const loc = { lat, lng };
+
+      // 地図を現在地へ移動＆マーカー表示
+      map.setCenter(loc);
+      map.setZoom(14);
+      if (currentMarker) currentMarker.setMap(null);
+      currentMarker = new google.maps.Marker({
+        position: loc,
+        map,
+        title: '現在地'
+      });
+
+      // 住所に変換（逆ジオコーディング）
+      geocoder.geocode({ location: loc }, (results, status) => {
+        if (status === 'OK' && results && results[0]) {
+          document.getElementById('start').value = results[0].formatted_address;
+        } else {
+          document.getElementById('start').value = `${lat.toFixed(6)},${lng.toFixed(6)}`;
+        }
+      });
+    },
+    (err) => {
+      const msg = {
+        1: '位置情報の権限が拒否されました',
+        2: '位置情報が取得できませんでした',
+        3: '位置情報の取得がタイムアウトしました'
+      }[err.code] || '位置情報の取得に失敗しました';
+      alert(msg);
+    },
+    {
+      enableHighAccuracy: true,
+      timeout: 10000,
+      maximumAge: 0
+    }
+  );
+}
  async function makeRoute() {
   const start = document.getElementById('start').value;
   const end = document.getElementById('end').value;
@@ -207,6 +269,7 @@ async function shareOnLINE() {
   </script>
 </body>
 </html>
+
 
 
 
