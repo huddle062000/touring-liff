@@ -122,23 +122,46 @@
 } // ← ここで makeRoute() を閉じる
 
 // ===== 共有ボタン（スマホ/PC 両対応版） =====
+// スマホ/PC 両対応：位置情報 → テキストURLに自動フォールバック
 async function shareOnLINE() {
   try {
-    if (!window._shareText) {
+    const payload = window._sharePayload;
+    if (!payload) {
       alert('先に「ルートを作る」で経路を作成してください。');
       return;
     }
 
-    // 1) LINEアプリ内でShare Target Pickerが使える場合
+    // 1) LINEアプリ内 & Share Target Picker が使える → 位置情報を送る
     if (liff.isInClient() && liff.isApiAvailable('shareTargetPicker')) {
-      const res = await liff.shareTargetPicker([{ type: 'text', text: window._shareText }]);
-      if (res) alert('送信しました！');
-      return;
+      try {
+        const res = await liff.shareTargetPicker([
+          {
+            type: 'location',
+            title: payload.start.title,
+            address: payload.start.address,
+            latitude: payload.start.lat,
+            longitude: payload.start.lng
+          },
+          {
+            type: 'location',
+            title: payload.end.title,
+            address: payload.end.address,
+            latitude: payload.end.lat,
+            longitude: payload.end.lng
+          },
+          { type: 'text', text: `ルートを見る：\n${payload.gmapsUrl}` }
+        ]);
+        if (res) alert('送信しました！');
+        return;
+      } catch (e) {
+        console.warn('location送信に失敗。テキストにフォールバックします:', e);
+      }
     }
 
-    // 2) それ以外（PCブラウザ、外部ブラウザなど）は共有URLで開く
-    const shareUrl = 'https://line.me/R/share?text=' + encodeURIComponent(window._shareText);
-    window.open(shareUrl, '_blank'); // ← PCでも動作（新しいタブでLINE共有ページ）
+    // 2) PC/外部ブラウザ/非対応端末 → テキストURL共有にフォールバック
+    const shareUrl = 'https://line.me/R/share?text=' + encodeURIComponent(payload.text);
+    window.open(shareUrl, '_blank');
+
   } catch (e) {
     alert('共有に失敗しました：\n' + (e?.message || String(e)));
   }
@@ -147,6 +170,7 @@ async function shareOnLINE() {
   </script>
 </body>
 </html>
+
 
 
 
