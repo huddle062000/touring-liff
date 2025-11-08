@@ -69,55 +69,57 @@
     if (!start || !end) { alert('出発地と目的地を入力してください'); return; }
     const req = { origin: start, destination: end, travelMode: google.maps.TravelMode.DRIVING };
     directionsService.route(req, (result, status) => {
-if (status === 'OK') {
-  directionsRenderer.setDirections(result);
-  const leg = result.routes[0].legs[0];
+  if (status === 'OK') {
+    directionsRenderer.setDirections(result);
+    const leg = result.routes[0].legs[0];
 
-  // 画面表示（そのまま）
-  const s = document.getElementById('summary');
-  s.textContent = `距離: ${leg.distance.text}　時間: ${leg.duration.text}`;
+    // 画面表示
+    const s = document.getElementById('summary');
+    s.textContent = `距離: ${leg.distance.text}　時間: ${leg.duration.text}`;
 
-  // GoogleマップのルートURL（タップで地図アプリが開く）
-  const gmapsUrl =
-    'https://www.google.com/maps/dir/?api=1' +
-    `&origin=${encodeURIComponent(leg.start_address)}` +
-    `&destination=${encodeURIComponent(leg.end_address)}` +
-    '&travelmode=driving';
+    // GoogleマップのルートURL
+    const gmapsUrl =
+      'https://www.google.com/maps/dir/?api=1' +
+      `&origin=${encodeURIComponent(leg.start_address)}` +
+      `&destination=${encodeURIComponent(leg.end_address)}` +
+      '&travelmode=driving';
 
-  // 共有用データをまとめて保存（位置情報＋テキスト＋URL）
-  window._sharePayload = {
-    text:
-      `出発地: ${leg.start_address}\n` +
-      `目的地: ${leg.end_address}\n` +
-      `距離: ${leg.distance.text}\n` +
-      `時間: ${leg.duration.text}\n\n` +
-      `ルートを見る: ${gmapsUrl}`,
-    gmapsUrl,
-    start: {
-      title: '出発地',
-      address: leg.start_address,
-      lat: leg.start_location.lat(),
-      lng: leg.start_location.lng(),
-    },
-    end: {
-      title: '目的地',
-      address: leg.end_address,
-      lat: leg.end_location.lat(),
-      lng: leg.end_location.lng(),
-    }
-  };
+    // 共有用データ（位置情報＋テキスト＋URL）
+    window._sharePayload = {
+      text:
+        `出発地: ${leg.start_address}\n` +
+        `目的地: ${leg.end_address}\n` +
+        `距離: ${leg.distance.text}\n` +
+        `時間: ${leg.duration.text}\n\n` +
+        `ルートを見る: ${gmapsUrl}`,
+      gmapsUrl,
+      start: {
+        title: '出発地',
+        address: leg.start_address,
+        lat: leg.start_location.lat(),
+        lng: leg.start_location.lng(),
+      },
+      end: {
+        title: '目的地',
+        address: leg.end_address,
+        lat: leg.end_location.lat(),
+        lng: leg.end_location.lng(),
+      }
+    };
 
-  // 従来のテキストも一応残しておく（フォールバック用）
-  window._shareText =
-    `出発地: ${leg.start_address}\n目的地: ${leg.end_address}\n距離: ${leg.distance.text}\n時間: ${leg.duration.text}\n\nルートを見る: ${gmapsUrl}`;
+    // フォールバック用テキストも保存（任意）
+    window._shareText =
+      `出発地: ${leg.start_address}\n目的地: ${leg.end_address}\n距離: ${leg.distance.text}\n時間: ${leg.duration.text}\n\nルートを見る: ${gmapsUrl}`;
 
-  // 共有ボタンを有効化
-  document.getElementById('shareBtn').disabled = false;
+    // 共有ボタンを有効化
+    document.getElementById('shareBtn').disabled = false;
 
-} else {
-  alert('ルートを作れませんでした');
-  document.getElementById('summary').textContent = '';
-}
+  } else {
+    alert('ルートを作れませんでした');
+    document.getElementById('summary').textContent = '';
+  }
+}); // ← ここで route() のコールバックを閉じる
+} // ← ここで makeRoute() を閉じる
 
 // ===== 共有ボタン（スマホ/PC 両対応版） =====
 async function shareOnLINE() {
@@ -145,6 +147,7 @@ async function shareOnLINE() {
   </script>
 </body>
 </html>
+
 
 
 
