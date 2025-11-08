@@ -74,62 +74,84 @@
   }
   window.initMap = initMap;
 
-  async function makeRoute() {
-    const start = document.getElementById('start').value;
-    const end = document.getElementById('end').value;
-    if (!start || !end) { alert('出発地と目的地を入力してください'); return; }
-    const req = { origin: start, destination: end, travelMode: google.maps.TravelMode.DRIVING };
-    directionsService.route(req, (result, status) => {
-  if (status === 'OK') {
-    directionsRenderer.setDirections(result);
-    const leg = result.routes[0].legs[0];
+ async function makeRoute() {
+  const start = document.getElementById('start').value;
+  const end = document.getElementById('end').value;
+  if (!start || !end) { alert('出発地と目的地を入力してください'); return; }
 
-    // 画面表示
-    const s = document.getElementById('summary');
-    s.textContent = `距離: ${leg.distance.text}　時間: ${leg.duration.text}`;
+  // チェック状態を取得
+  const avoidHighways = document.getElementById('opt-avoid-highways').checked;
+  const avoidTolls = document.getElementById('opt-avoid-tolls').checked;
 
-    // GoogleマップのルートURL
-    const gmapsUrl =
-      'https://www.google.com/maps/dir/?api=1' +
-      `&origin=${encodeURIComponent(leg.start_address)}` +
-      `&destination=${encodeURIComponent(leg.end_address)}` +
-      '&travelmode=driving';
+  // Directions API へのリクエスト
+  const req = {
+    origin: start,
+    destination: end,
+    travelMode: google.maps.TravelMode.DRIVING,
+    avoidHighways,       // ← 高速を避ける
+    avoidTolls          // ← 有料を避ける
+  };
 
-    // 共有用データ（位置情報＋テキスト＋URL）
-    window._sharePayload = {
-      text:
-        `出発地: ${leg.start_address}\n` +
-        `目的地: ${leg.end_address}\n` +
-        `距離: ${leg.distance.text}\n` +
-        `時間: ${leg.duration.text}\n\n` +
-        `ルートを見る: ${gmapsUrl}`,
-      gmapsUrl,
-      start: {
-        title: '出発地',
-        address: leg.start_address,
-        lat: leg.start_location.lat(),
-        lng: leg.start_location.lng(),
-      },
-      end: {
-        title: '目的地',
-        address: leg.end_address,
-        lat: leg.end_location.lat(),
-        lng: leg.end_location.lng(),
-      }
-    };
+  directionsService.route(req, (result, status) => {
+    if (status === 'OK') {
+      directionsRenderer.setDirections(result);
+      const leg = result.routes[0].legs[0];
 
-    // フォールバック用テキストも保存（任意）
-    window._shareText =
-      `出発地: ${leg.start_address}\n目的地: ${leg.end_address}\n距離: ${leg.distance.text}\n時間: ${leg.duration.text}\n\nルートを見る: ${gmapsUrl}`;
+      // 画面表示（オプションも表示）
+      const s = document.getElementById('summary');
+      const optTxt = `（高速: ${avoidHighways ? '使わない' : '使う'} / 有料: ${avoidTolls ? '使わない' : '使う'}）`;
+      s.textContent = `距離: ${leg.distance.text}　時間: ${leg.duration.text} ${optTxt}`;
 
-    // 共有ボタンを有効化
-    document.getElementById('shareBtn').disabled = false;
+      // GoogleマップのルートURLを作成（avoidパラメータ対応）
+      const avoidParams = [];
+      if (avoidHighways) avoidParams.push('highways');
+      if (avoidTolls)    avoidParams.push('tolls');
+      const avoidStr = avoidParams.length ? `&avoid=${avoidParams.join('%7C')}` : '';
 
-  } else {
-    alert('ルートを作れませんでした');
-    document.getElementById('summary').textContent = '';
-  }
-}); // ← ここで route() のコールバックを閉じる
+      const gmapsUrl =
+        'https://www.google.com/maps/dir/?api=1' +
+        `&origin=${encodeURIComponent(leg.start_address)}` +
+        `&destination=${encodeURIComponent(leg.end_address)}` +
+        `&travelmode=driving${avoidStr}`;
+
+      // 共有用データ（位置情報＋テキスト＋URL）
+      window._sharePayload = {
+        text:
+          `出発地: ${leg.start_address}\n` +
+          `目的地: ${leg.end_address}\n` +
+          `距離: ${leg.distance.text}\n` +
+          `時間: ${leg.duration.text}\n` +
+          `設定: 高速=${avoidHighways ? '使わない' : '使う'} / 有料=${avoidTolls ? '使わない' : '使う'}\n\n` +
+          `ルートを見る: ${gmapsUrl}`,
+        gmapsUrl,
+        start: {
+          title: '出発地',
+          address: leg.start_address,
+          lat: leg.start_location.lat(),
+          lng: leg.start_location.lng(),
+        },
+        end: {
+          title: '目的地',
+          address: leg.end_address,
+          lat: leg.end_location.lat(),
+          lng: leg.end_location.lng(),
+        }
+      };
+
+      // フォールバック用テキストも保存（任意）
+      window._shareText =
+        `出発地: ${leg.start_address}\n目的地: ${leg.end_address}\n距離: ${leg.distance.text}\n時間: ${leg.duration.text}\n` +
+        `設定: 高速=${avoidHighways ? '使わない' : '使う'} / 有料=${avoidTolls ? '使わない' : '使う'}\n\n` +
+        `ルートを見る: ${gmapsUrl}`;
+
+      // 共有ボタンを有効化
+      document.getElementById('shareBtn').disabled = false;
+
+    } else {
+      alert('ルートを作れませんでした');
+      document.getElementById('summary').textContent = '';
+    }
+  });
 } // ← ここで makeRoute() を閉じる
 
 // ===== 共有ボタン（スマホ/PC 両対応版） =====
@@ -181,6 +203,7 @@ async function shareOnLINE() {
   </script>
 </body>
 </html>
+
 
 
 
