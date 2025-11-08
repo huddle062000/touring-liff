@@ -13,10 +13,24 @@
     input { padding: 8px; width: 100%; margin-bottom: 8px; border: 1px solid #ccc; border-radius: 6px; }
     button { padding: 10px; font-size: 16px; border: none; border-radius: 8px; background: #06c755; color: white; width: 100%; }
     button:disabled { opacity: 0.5; }
+      /* 既存のstyleの末尾に追加 */
+  body.fullmap header,
+  body.fullmap .panel { display: none; }
+
+  body.fullmap #map { height: 100vh !important; }
+
+  #back { 
+    position: fixed; top: 10px; left: 10px; z-index: 1000;
+    background: #06c755; color: #fff; border: none; border-radius: 8px;
+    padding: 8px 12px; display: none;
+  }
+  body.fullmap #back { display: inline-block; }
   </style>
 </head>
 <body>
   <header><h1>ツーリングルート共有</h1></header>
+    <!-- 追加：全画面時のみ見える戻るボタン -->
+  <button id="back" type="button">戻る</button>
 
   <div class="panel">
     <!-- 出発地入力 + 現在地ボタン（重複なし・ID一意） -->
@@ -216,8 +230,55 @@
       }
     }
   </script>
+  <script>
+  // 既存のリスナー群の下あたりに追加
+  document.getElementById('back').addEventListener('click', () => {
+    document.body.classList.remove('fullmap');
+    // 必要があればスクロール位置を戻す
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  });
+
+  async function makeRoute() {
+    const start = document.getElementById('start').value;
+    const end   = document.getElementById('end').value;
+    if (!start || !end) { alert('出発地と目的地を入力してください'); return; }
+
+    const avoidHighways = document.getElementById('opt-avoid-highways').checked;
+    const avoidTolls    = document.getElementById('opt-avoid-tolls').checked;
+
+    const req = {
+      origin: start,
+      destination: end,
+      travelMode: google.maps.TravelMode.DRIVING,
+      avoidHighways,
+      avoidTolls
+    };
+
+    directionsService.route(req, (result, status) => {
+      if (status === 'OK') {
+        directionsRenderer.setDirections(result);
+
+        // ★ ここで全画面化（前面に地図だけ）に切り替え
+        document.body.classList.add('fullmap');
+
+        const leg = result.routes[0].legs[0];
+        const s = document.getElementById('summary');
+        const optTxt = `（高速: ${avoidHighways ? '使わない' : '使う'} / 有料: ${avoidTolls ? '使わない' : '使う'}）`;
+        s.textContent = `距離: ${leg.distance.text}　時間: ${leg.duration.text} ${optTxt}`;
+
+        // 以降はあなたの既存コード（共有用URL生成など）そのままでOK
+        /* ... 既存の gmapsUrl 作成＆ window._sharePayload の設定 ... */
+
+      } else {
+        alert('ルートを作れませんでした');
+        document.getElementById('summary').textContent = '';
+      }
+    });
+  }
+</script>
 </body>
 </html>
+
 
 
 
