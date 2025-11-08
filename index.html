@@ -8,120 +8,87 @@
     html, body { height: 100%; margin: 0; font-family: sans-serif; }
     header { padding: 10px 16px; background: #06c755; color: white; }
     h1 { font-size: 18px; margin: 0; }
-    #map { width: 100%; height: 60vh; }
-    .panel { padding: 12px 16px; }
+
+    #map { width: 100%; height: 50vh; }
+    @media (min-width: 769px){ #map { height: 60vh; } }
+
+    .panel { padding: 12px 16px; background:#fff; }
     input, select { padding: 8px; width: 100%; margin-bottom: 8px; border: 1px solid #ccc; border-radius: 6px; }
     button { padding: 10px; font-size: 16px; border: none; border-radius: 8px; background: #06c755; color: white; width: 100%; cursor: pointer; }
     button:disabled { opacity: 0.5; cursor: default; }
     label.chk { display:flex; gap:6px; align-items:center; margin-right:12px; }
 
-    /* 全画面表示用スタイル */
-    body.fullmap header,
-    body.fullmap .panel { display: none; }
+    /* 全画面（ルート描画後） */
+    body.fullmap header, body.fullmap #controls { display: none; }
     body.fullmap #map { height: 100vh !important; }
 
-    #back { 
-      position: fixed; top: 10px; left: 10px; z-index: 1000;
-      background: #06c755; color: #fff; border: none; border-radius: 8px;
-      padding: 8px 12px; display: none;
-    }
+    #back { position: fixed; top: 10px; left: 10px; z-index: 1000; background: #06c755; color: #fff; border: none; border-radius: 8px; padding: 8px 12px; display: none; }
     body.fullmap #back { display: inline-block; }
 
-    /* 全画面時に出すフローティング操作ボタン */
     #fab {
-      position: fixed;
-      right: 12px;
-      bottom: 16px;
-      display: none;
-      z-index: 1001;
-      gap: 8px;
-      flex-direction: column;
-      align-items: end;
+      position: fixed; right: 12px; bottom: 16px; z-index: 1001;
+      gap: 8px; display: none; flex-direction: column; align-items: end;
     }
-    #fab button, #fab .pill {
-      padding: 10px 14px;
-      border: none;
-      border-radius: 20px;
-      background: #06c755;
-      color: #fff;
-      font-size: 14px;
-      box-shadow: 0 2px 8px rgba(0,0,0,.2);
-      white-space: nowrap;
-      width: auto;
-      cursor: pointer;
+    #fab button {
+      padding: 10px 14px; border: none; border-radius: 20px; background: #06c755; color: #fff;
+      font-size: 14px; box-shadow: 0 2px 8px rgba(0,0,0,.2); white-space: nowrap; width: auto; cursor: pointer;
     }
     body.fullmap #fab { display: flex; }
 
-    /* 天気バッジ */
-    #weatherBadge {
-      position: fixed; left: 12px; bottom: 16px; z-index: 1001;
-      background: rgba(255,255,255,0.92); color: #222; border-radius: 12px;
-      padding: 8px 12px; font-size: 13px; line-height: 1.4; box-shadow: 0 2px 8px rgba(0,0,0,.15);
-      display: none; min-width: 180px;
-    }
-    #weatherBadge .title{ font-weight:700; font-size:12px; color:#06c755; }
-    #weatherBadge .row{ display:flex; gap:8px; flex-wrap:wrap; }
-
-    /* レーダーコントロール */
-    #radarCtl {
-      display: flex; gap: 8px; align-items: center;
-      background: rgba(0,0,0,0.65);
-      color: #fff; padding: 8px 10px; border-radius: 12px;
-    }
-    #radarCtl input[type="range"]{ width: 140px; }
+    #jumpCtl { position: fixed; right: 12px; bottom: 16px; z-index: 1000;
+      padding: 10px 14px; border: none; border-radius: 20px; background: #06c755; color:#fff; font-size: 14px; box-shadow:0 2px 8px rgba(0,0,0,.2); }
+    body.fullmap #jumpCtl { display:none; }
 
     /* 休憩スポット ドロワー */
     #stopsDrawer {
       position: fixed; right: 12px; top: 12px; z-index: 1001;
       background: rgba(255,255,255,0.98); border-radius: 12px; box-shadow: 0 2px 10px rgba(0,0,0,.2);
-      width: min(360px, 92vw); max-height: 70vh; display: none; flex-direction: column;
+      width: min(360px, 92vw); max-height: 72vh; display: none; flex-direction: column;
     }
     #stopsDrawer header { display:flex; justify-content: space-between; align-items:center; padding:10px 12px; border-bottom:1px solid #eee; }
-    #stopsList { overflow:auto; max-height: 52vh; padding: 8px 10px; }
-    .stopItem {
-      border: 1px solid #eee; border-radius: 10px; padding: 8px 10px; margin-bottom: 8px; cursor: pointer;
-    }
+    #stopsList { overflow:auto; max-height: 54vh; padding: 8px 10px; }
+    .stopItem { border: 1px solid #eee; border-radius: 10px; padding: 8px 10px; margin-bottom: 8px; cursor: pointer; }
     .stopItem:hover { background: #fafafa; }
     .meta { color:#666; font-size:12px; display:flex; gap:8px; flex-wrap:wrap; }
     .controls { padding:10px 12px; display:flex; gap:10px; align-items:center; border-bottom:1px solid #eee; flex-wrap:wrap; }
     .controls .group { display:flex; gap:10px; flex-wrap:wrap; align-items:center; }
     .badge { background:#06c755; color:#fff; border-radius:12px; padding:2px 8px; font-size:12px; }
-
   </style>
 </head>
 <body>
   <header><h1>ライドツーリングツール</h1></header>
 
-  <!-- 全画面時のみ見える戻るボタン -->
-  <button id="back" type="button">戻る</button>
+  <button id="jumpCtl" type="button">操作パネル</button>
+  <div id="map"></div>
 
-  <!-- 全画面時に表示されるフローティング操作 -->
-  <div id="fab">
-    <div id="radarCtl" style="display:none;">
-      <label style="display:flex;align-items:center;gap:6px;cursor:pointer;">
-        <input type="checkbox" id="radarToggle" />
-        雨雲レーダー
-      </label>
-      <label style="display:flex;align-items:center;gap:6px;">
-        透明度
-        <input type="range" id="radarOpacity" min="0" max="100" value="70" />
-      </label>
+  <!-- 上：操作パネル -->
+  <div id="controls" class="panel">
+    <div style="display:flex; gap:8px; align-items:center;">
+      <input id="start" placeholder="出発地を入力（例：京都駅）" style="flex:1">
+      <button type="button" id="btn-loc" style="width:auto; white-space:nowrap;">現在地</button>
     </div>
-    <button id="stopsBtnFab" disabled>休憩スポット提案</button>
-    <button id="navBtnFab" disabled>Googleナビ開始</button>
-    <button id="shareBtnFab" disabled>LINEで共有</button>
+    <input id="end" placeholder="目的地を入力（例：美山 かやぶきの里）">
+    <div style="display:flex; gap:12px; align-items:center; margin:6px 0 10px; flex-wrap:wrap;">
+      <label class="chk"><input type="checkbox" id="opt-avoid-highways"> 高速を使わない</label>
+      <label class="chk"><input type="checkbox" id="opt-avoid-tolls"> 有料道路を使わない</label>
+    </div>
+    <button id="makeRoute">ルートを作る</button>
+    <button id="shareBtn" disabled>LINEで共有</button>
+    <button id="navBtn" disabled>Googleナビで開く</button>
+    <button id="stopsBtn" disabled>休憩スポット提案</button>
   </div>
 
-  <!-- 左下の天気バッジ -->
-  <div id="weatherBadge">
-    <div class="title">現在の天気</div>
-    <div class="row">
-      <div id="wb-location">-</div>
-      <div id="wb-temp">-℃</div>
-      <div id="wb-rain">降水 - mm</div>
-      <div id="wb-wind">風 - m/s</div>
-    </div>
-    <div style="font-size:11px;color:#666;">5〜10分ごとに更新</div>
+  <!-- 下：サマリー（距離・時間のみ） -->
+  <div id="summaryPanel" class="panel" style="padding-top:8px">
+    <div id="summary" style="font-size:14px;line-height:1.6;color:#333">距離と時間はここに表示されます。</div>
+  </div>
+
+  <!-- 全画面時の操作 -->
+  <button id="back" type="button">戻る</button>
+  <div id="fab">
+    <button id="navBtnFab" disabled>Googleナビ開始</button>
+    <button id="shareBtnFab" disabled>LINEで共有</button>
+    <button id="stopsBtnFab" disabled>休憩スポット提案</button>
   </div>
 
   <!-- 休憩スポット ドロワー -->
@@ -142,8 +109,8 @@
         半径
         <select id="stopRadius" style="width:auto;">
           <option value="2000">2km</option>
-          <option value="3000" selected>3km</option>
-          <option value="5000">5km</option>
+          <option value="3000">3km</option>
+          <option value="5000" selected>5km</option>
           <option value="8000">8km</option>
         </select>
         <label class="chk"><input type="checkbox" id="onlyOpen">営業中のみ</label>
@@ -153,122 +120,28 @@
     <div id="stopsList"></div>
   </div>
 
-  <div class="panel">
-    <div style="display:flex; gap:8px; align-items:center;">
-      <input id="start" placeholder="出発地を入力（例：京都駅）" style="flex:1">
-      <button type="button" id="btn-loc" style="width:auto; white-space:nowrap;">現在地</button>
-    </div>
-
-    <input id="end" placeholder="目的地を入力（例：美山 かやぶきの里）">
-
-    <div style="display:flex; gap:12px; align-items:center; margin:6px 0 10px">
-      <label class="chk">
-        <input type="checkbox" id="opt-avoid-highways">
-        高速を使わない
-      </label>
-      <label class="chk">
-        <input type="checkbox" id="opt-avoid-tolls">
-        有料道路を使わない
-      </label>
-    </div>
-
-    <button id="makeRoute">ルートを作る</button>
-    <button id="shareBtn" disabled>LINEで共有</button>
-    <button id="navBtn" disabled>Googleナビで開く</button>
-
-    <div style="margin-top:10px; display:flex; gap:10px; align-items:center;">
-      <label class="chk">
-        <input type="checkbox" id="radarTogglePanel" /> 雨雲レーダー表示
-      </label>
-      <button id="stopsBtn" disabled style="width:auto;">休憩スポット提案</button>
-    </div>
-  </div>
-
-  <div id="map"></div>
-
-  <div class="panel" style="padding-top:8px">
-    <div id="summary" style="font-size:14px;line-height:1.6;color:#333"></div>
-  </div>
-
-  <!-- LINE SDK -->
+  <!-- LINE SDK（任意） -->
   <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
   <script>
     const LIFF_ID = "2008438848-3gJlGQvy";
     (async function initLIFFSafe() {
       try { if (window.liff) { await liff.init({ liffId: LIFF_ID }); } }
-      catch (e) { console.warn('LIFF init skipped:', e); }
+      catch(e){ console.warn('LIFF init skipped:', e); }
     })();
   </script>
 
-  <!-- Google Maps API（Places含む） -->
+  <!-- Google Maps JS（★地域指定 & Places/Geometry 追加） -->
   <script>
-    let map, directionsService, directionsRenderer;
-    let geocoder, currentMarker, placesService, infoWnd;
+    let map, directionsService, directionsRenderer, geocoder, placesService, currentMarker, infoWnd;
     let lastRouteResult = null;
-
-    /* 天気関連 */
-    let weatherTimer = null;
-
-    /* 雨雲レーダー（RainViewer） */
-    let radarLayer = null, radarTimestamp = null, radarTimer = null;
-    const RADAR_UPDATE_MS = 5 * 60 * 1000;
-
-    /* 休憩スポット */
-    let stopMarkers = [];
-    const stopIcon = {
-      cafe: "☕", gas_station: "⛽", parking: "🅿", tourist_attraction:"📍", michi:"🏯"
-    };
-
-    /* 端末判定 */
     const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+
+    let stopMarkers = [];
+    const stopIcon = { cafe:"☕", gas_station:"⛽", parking:"🅿", tourist_attraction:"📍", michi:"🏯" };
   </script>
-  <script
-    src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBlN9ik-Y3CpEy3Uw9hXfBq0m2AoZWx_oM&libraries=places&language=ja&callback=initMap"
-    async defer></script>
+  <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBlN9ik-Y3CpEy3Uw9hXfBq0m2AoZWx_oM&libraries=places,geometry&language=ja&region=JP&callback=initMap" async defer></script>
 
   <script>
-    document.addEventListener('DOMContentLoaded', () => {
-      document.getElementById('makeRoute').addEventListener('click', makeRoute);
-      document.getElementById('shareBtn').addEventListener('click', shareOnLINE);
-      document.getElementById('navBtn').addEventListener('click', openNavigation);
-      document.getElementById('btn-loc').addEventListener('click', fillWithCurrentLocation);
-
-      // フローティング側
-      document.getElementById('shareBtnFab').addEventListener('click', shareOnLINE);
-      document.getElementById('navBtnFab').addEventListener('click', openNavigation);
-      document.getElementById('stopsBtnFab').addEventListener('click', () => suggestStops(true));
-
-      // レーダーON/OFF同期
-      const syncRadar = (checked) => {
-        document.getElementById('radarToggle').checked = checked;
-        document.getElementById('radarTogglePanel').checked = checked;
-        if (checked) { enableRadar(); } else { disableRadar(); }
-      };
-      document.getElementById('radarToggle').addEventListener('change', (e)=>syncRadar(e.target.checked));
-      document.getElementById('radarTogglePanel').addEventListener('change', (e)=>syncRadar(e.target.checked));
-      document.getElementById('radarOpacity').addEventListener('input', (e) => {
-        const v = Number(e.target.value)/100;
-        if (radarLayer) radarLayer.setOpacity(v);
-      });
-
-      // 休憩スポットUI
-      document.getElementById('stopsBtn').addEventListener('click', () => suggestStops(true));
-      document.getElementById('stopsClose').addEventListener('click', () => {
-        document.getElementById('stopsDrawer').style.display = 'none';
-      });
-      document.getElementById('stopsRefresh').addEventListener('click', () => suggestStops(false));
-
-      // 戻る
-      document.getElementById('back').addEventListener('click', () => {
-        document.body.classList.remove('fullmap');
-        if (window.google && map) google.maps.event.trigger(map, 'resize');
-        document.getElementById('shareBtnFab').disabled = true;
-        document.getElementById('navBtnFab').disabled   = true;
-        document.getElementById('stopsBtnFab').disabled = true;
-        window.scrollTo({ top: 0, behavior: 'smooth' });
-      });
-    });
-
     function initMap() {
       map = new google.maps.Map(document.getElementById('map'), { center: { lat: 35.0116, lng: 135.7681 }, zoom: 9 });
       directionsService = new google.maps.DirectionsService();
@@ -276,20 +149,35 @@
       geocoder = new google.maps.Geocoder();
       placesService = new google.maps.places.PlacesService(map);
       infoWnd = new google.maps.InfoWindow();
-
-      // 天気
-      refreshWeatherAt(map.getCenter());
-      let weatherDebounce = null;
-      map.addListener('idle', () => {
-        clearTimeout(weatherDebounce);
-        weatherDebounce = setTimeout(()=>refreshWeatherAt(map.getCenter()), 5000);
-      });
-
-      // レーダーUI
-      document.getElementById('radarCtl').style.display = 'flex';
     }
 
-    /* 現在地 */
+    document.addEventListener('DOMContentLoaded', () => {
+      document.getElementById('makeRoute').addEventListener('click', makeRoute);
+      document.getElementById('shareBtn').addEventListener('click', shareOnLINE);
+      document.getElementById('navBtn').addEventListener('click', openNavigation);
+      document.getElementById('stopsBtn').addEventListener('click', () => suggestStops(true));
+      document.getElementById('btn-loc').addEventListener('click', fillWithCurrentLocation);
+
+      document.getElementById('shareBtnFab').addEventListener('click', shareOnLINE);
+      document.getElementById('navBtnFab').addEventListener('click', openNavigation);
+      document.getElementById('stopsBtnFab').addEventListener('click', () => suggestStops(true));
+
+      document.getElementById('back').addEventListener('click', () => {
+        document.body.classList.remove('fullmap');
+        if (window.google && map) google.maps.event.trigger(map, 'resize');
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      });
+
+      document.getElementById('stopsClose').addEventListener('click', () => {
+        document.getElementById('stopsDrawer').style.display = 'none';
+      });
+      document.getElementById('stopsRefresh').addEventListener('click', () => suggestStops(false));
+
+      document.getElementById('jumpCtl').addEventListener('click', () => {
+        document.getElementById('controls').scrollIntoView({ behavior:'smooth', block:'start' });
+      });
+    });
+
     function fillWithCurrentLocation() {
       if (!navigator.geolocation) { alert('この端末では位置情報が使えません'); return; }
       navigator.geolocation.getCurrentPosition(
@@ -298,7 +186,6 @@
           map.setCenter(loc); map.setZoom(12);
           if (currentMarker) currentMarker.setMap(null);
           currentMarker = new google.maps.Marker({ position: loc, map, title: '現在地' });
-          refreshWeatherAt(loc);
           geocoder.geocode({ location: loc }, (results, status) => {
             document.getElementById('start').value =
               (status === 'OK' && results && results[0]) ? results[0].formatted_address : `${lat.toFixed(6)},${lng.toFixed(6)}`;
@@ -312,18 +199,15 @@
       );
     }
 
-    /* ルート作成 */
     async function makeRoute() {
       const start = document.getElementById('start').value;
       const end   = document.getElementById('end').value;
       if (!start || !end) { alert('出発地と目的地を入力してください'); return; }
+
       const avoidHighways = document.getElementById('opt-avoid-highways').checked;
       const avoidTolls    = document.getElementById('opt-avoid-tolls').checked;
 
-      const req = {
-        origin: start, destination: end, travelMode: google.maps.TravelMode.DRIVING,
-        avoidHighways, avoidTolls
-      };
+      const req = { origin: start, destination: end, travelMode: google.maps.TravelMode.DRIVING, avoidHighways, avoidTolls };
 
       directionsService.route(req, (result, status) => {
         if (status === 'OK') {
@@ -333,25 +217,22 @@
           if (window.google && map) google.maps.event.trigger(map, 'resize');
 
           const leg = result.routes[0].legs[0];
-          const s = document.getElementById('summary');
           const optTxt = `（高速: ${avoidHighways ? '使わない' : '使う'} / 有料: ${avoidTolls ? '使わない' : '使う'}）`;
-          s.textContent = `距離: ${leg.distance.text}　時間: ${leg.duration.text} ${optTxt}`;
+          document.getElementById('summary').textContent = `距離: ${leg.distance.text}　時間: ${leg.duration.text} ${optTxt}`;
 
           const avoidParams = [];
           if (avoidHighways) avoidParams.push('highways');
           if (avoidTolls)    avoidParams.push('tolls');
           const avoidStr = avoidParams.length ? `&avoid=${avoidParams.join('%7C')}` : '';
 
-          const gmapsUrl =
-            'https://www.google.com/maps/dir/?api=1' +
-            `&origin=${encodeURIComponent(leg.start_address)}` +
-            `&destination=${encodeURIComponent(leg.end_address)}` +
-            `&travelmode=driving${avoidStr}`;
-          const gmapsNavUrl =
-            'https://www.google.com/maps/dir/?api=1' +
-            `&origin=${encodeURIComponent(leg.start_address)}` +
-            `&destination=${encodeURIComponent(leg.end_address)}` +
-            `&travelmode=driving&dir_action=navigate`;
+          const gmapsUrl   = 'https://www.google.com/maps/dir/?api=1'
+            + `&origin=${encodeURIComponent(leg.start_address)}`
+            + `&destination=${encodeURIComponent(leg.end_address)}`
+            + `&travelmode=driving${avoidStr}`;
+          const gmapsNavUrl= 'https://www.google.com/maps/dir/?api=1'
+            + `&origin=${encodeURIComponent(leg.start_address)}`
+            + `&destination=${encodeURIComponent(leg.end_address)}`
+            + `&travelmode=driving&dir_action=navigate`;
 
           window._sharePayload = {
             text:
@@ -364,17 +245,10 @@
             gmapsUrl, gmapsNavUrl
           };
 
-          // ボタン有効化
-          document.getElementById('shareBtn').disabled = false;
-          document.getElementById('navBtn').disabled   = false;
           document.getElementById('shareBtnFab').disabled = false;
           document.getElementById('navBtnFab').disabled   = false;
-          document.getElementById('stopsBtn').disabled   = false;
-          document.getElementById('stopsBtnFab').disabled= false;
-
-          // 目的地付近の天気
-          refreshWeatherAt(leg.end_location);
-
+          document.getElementById('stopsBtnFab').disabled = false;
+          document.getElementById('stopsBtn').disabled    = false;
         } else {
           alert('ルートを作れませんでした');
           document.getElementById('summary').textContent = '';
@@ -382,7 +256,6 @@
       });
     }
 
-    /* ナビ */
     function openNavigation() {
       if (!window._sharePayload) { alert('先にルートを作成してください。'); return; }
       const url = isMobile ? window._sharePayload.gmapsNavUrl : window._sharePayload.gmapsUrl;
@@ -390,7 +263,6 @@
       if (!isMobile) setTimeout(()=>alert('PCブラウザでは音声ナビは使えません。ブラウザで経路を開きました。'), 300);
     }
 
-    /* LINE共有 */
     async function shareOnLINE() {
       try {
         const payload = window._sharePayload;
@@ -404,65 +276,7 @@
       } catch (e) { alert('共有に失敗しました：\n' + (e?.message || String(e))); }
     }
 
-    /* 天気（Open-Meteo） */
-    async function refreshWeatherAt(latLng) {
-      const lat = (typeof latLng.lat === 'function') ? latLng.lat() : latLng.lat;
-      const lng = (typeof latLng.lng === 'function') ? latLng.lng() : latLng.lng;
-      try {
-        const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&current=temperature_2m,precipitation,wind_speed_10m&timezone=auto`;
-        const res = await fetch(url); const data = await res.json(); const cur = data.current;
-        document.getElementById('wb-temp').textContent = `${Math.round(cur.temperature_2m)}℃`;
-        document.getElementById('wb-rain').textContent = `降水 ${cur.precipitation ?? 0} mm`;
-        document.getElementById('wb-wind').textContent = `風 ${cur.wind_speed_10m ?? 0} m/s`;
-        geocoder.geocode({ location: {lat, lng} }, (results, status) => {
-          const name = (status === 'OK' && results && results[0])
-            ? (results[0].address_components?.find(c=>c.types.includes('locality'))?.long_name || results[0].formatted_address.split('、')[0])
-            : `(${lat.toFixed(2)},${lng.toFixed(2)})`;
-          document.getElementById('wb-location').textContent = name;
-        });
-        document.getElementById('weatherBadge').style.display = 'block';
-        if (weatherTimer) clearTimeout(weatherTimer);
-        weatherTimer = setTimeout(()=>refreshWeatherAt({lat, lng}), 10*60*1000);
-      } catch(e) { console.warn('天気取得失敗', e); }
-    }
-
-    /* 雨雲レーダーON/OFF */
-    async function enableRadar() {
-      try {
-        const metaRes = await fetch('https://api.rainviewer.com/public/weather-maps.json');
-        const meta = await metaRes.json();
-        const frames = meta?.radar?.past || [];
-        const last = frames[frames.length - 1];
-        radarTimestamp = last?.time || null;
-        if (!radarTimestamp) { alert('レーダーデータを取得できませんでした'); syncRadarUI(false); return; }
-        disableRadar();
-        radarLayer = new google.maps.ImageMapType({
-          getTileUrl: (coord, zoom) =>
-            `https://tilecache.rainviewer.com/v2/radar/${radarTimestamp}/256/${zoom}/${coord.x}/${coord.y}/2/1_1.png`,
-          tileSize: new google.maps.Size(256, 256), name: 'RainViewer',
-          opacity: Number(document.getElementById('radarOpacity').value)/100, isPng: true
-        });
-        map.overlayMapTypes.insertAt(0, radarLayer);
-        if (radarTimer) clearInterval(radarTimer);
-        radarTimer = setInterval(enableRadar, RADAR_UPDATE_MS);
-      } catch (e) { console.warn('レーダー取得失敗', e); alert('雨雲レーダーの取得に失敗しました'); }
-    }
-    function disableRadar() {
-      if (radarTimer) { clearInterval(radarTimer); radarTimer = null; }
-      if (map && radarLayer) {
-        for (let i=map.overlayMapTypes.getLength()-1; i>=0; i--) {
-          const t = map.overlayMapTypes.getAt(i);
-          if (t === radarLayer) { map.overlayMapTypes.removeAt(i); }
-        }
-        radarLayer = null;
-      }
-    }
-    function syncRadarUI(checked){
-      document.getElementById('radarToggle').checked = checked;
-      document.getElementById('radarTogglePanel').checked = checked;
-    }
-
-    /* ===== 休憩スポット 自動提案 ===== */
+    /* ===== 休憩スポット：フォールバック付き検索 ===== */
     function suggestStops(openDrawerFirst = true) {
       if (!lastRouteResult) { alert('先にルートを作ってください'); return; }
       const typesChecked = [...document.querySelectorAll('.stop-type:checked')].map(el => el.value);
@@ -470,39 +284,60 @@
       const radius = Number(document.getElementById('stopRadius').value);
       const openNow = document.getElementById('onlyOpen').checked;
 
-      // 検索地点：目的地 + ルート中間点
       const route = lastRouteResult.routes[0];
       const leg = route.legs[0];
       const endLoc = leg.end_location;
       const midLoc = getRouteMidpoint(route);
 
       clearStopMarkers();
-      const promises = [];
-
+      const tasks = [];
       for (const t of typesChecked) {
         if (t === '道の駅') {
-          promises.push(nearbySearchKeyword(endLoc, '道の駅', radius, openNow));
-          promises.push(nearbySearchKeyword(midLoc, '道の駅', radius, openNow));
+          tasks.push(nearbySearchKeyword(endLoc, '道の駅', radius, openNow));
+          tasks.push(nearbySearchKeyword(midLoc, '道の駅', radius, openNow));
         } else {
-          promises.push(nearbySearchType(endLoc, t, radius, openNow));
-          promises.push(nearbySearchType(midLoc, t, radius, openNow));
+          tasks.push(nearbySearchType(endLoc, t, radius, openNow));
+          tasks.push(nearbySearchType(midLoc, t, radius, openNow));
         }
       }
 
-      Promise.all(promises).then(resultsArrays => {
-        const flat = resultsArrays.flat();
-        // 重複を place_id で排除
-        const seen = new Set();
-        const unique = [];
-        for (const r of flat) { if (!seen.has(r.place_id)) { seen.add(r.place_id); unique.push(r); } }
-
-        // 評価 / レビュー数 / 距離でソート
+      Promise.all(tasks).then(arrs => {
+        const flat = arrs.flat();
+        const seen = new Set(), unique = [];
+        for (const p of flat) { if (!seen.has(p.place_id)) { seen.add(p.place_id); unique.push(p); } }
         unique.sort((a,b) => (b.rating||0) - (a.rating||0) || (b.user_ratings_total||0)-(a.user_ratings_total||0));
-
-        // 上位20件まで
-        const top = unique.slice(0,20);
+        const top = unique.slice(0, 20);
         renderStops(top, leg);
         if (openDrawerFirst) document.getElementById('stopsDrawer').style.display = 'flex';
+      });
+    }
+
+    // ★nearbySearch → 0件時は textSearch にフォールバック
+    function nearbySearchType(location, type, radius, openNow){
+      return new Promise(resolve => {
+        placesService.nearbySearch({ location, radius, type, openNow }, (res, status) => {
+          if (status === 'OK' && res && res.length) return resolve(res);
+          placesService.textSearch({ location, radius, query: type, openNow }, (res2, status2) => {
+            resolve(status2 === 'OK' && res2 ? res2 : []);
+          });
+        });
+      });
+    }
+
+    // ★“道の駅”は表記ゆれ対策で複数キーワードを順に
+    function nearbySearchKeyword(location, keyword, radius, openNow){
+      return new Promise(resolve => {
+        placesService.nearbySearch({ location, radius, keyword, openNow }, async (res, status) => {
+          if (status === 'OK' && res && res.length) return resolve(res);
+          const altWords = keyword === '道の駅'
+            ? ['道の駅', '道の駅 休憩', '道の駅 ドライブ', 'ドライブイン', '休憩所']
+            : [keyword];
+          for (const q of altWords) {
+            const r = await new Promise(r2 => placesService.textSearch({ location, radius, query: q, openNow }, (res2, st2)=>r2(st2==='OK'&&res2?res2:[])));
+            if (r.length) return resolve(r);
+          }
+          resolve([]);
+        });
       });
     }
 
@@ -511,17 +346,14 @@
       document.getElementById('stopsCount').textContent = `${results.length}件`;
 
       results.forEach(place => {
-        // ピン
         const pos = place.geometry.location;
         const typeKey = (place.types||[]).find(t => stopIcon[t]) ? (place.types||[]).find(t => stopIcon[t]) : (place.name.includes('道の駅') ? 'michi' : 'tourist_attraction');
         const marker = new google.maps.Marker({
-          position: pos, map,
-          label: { text: stopIcon[typeKey] || '📍', color: '#000', fontSize: '16px' }
+          position: pos, map, label: { text: stopIcon[typeKey] || '📍', color: '#000', fontSize: '16px' }
         });
-        marker.addListener('click', () => openInfo(place, leg));
+        marker.addEventListener('click', () => openInfo(place, leg));
         stopMarkers.push(marker);
 
-        // リスト
         const item = document.createElement('div');
         item.className = 'stopItem';
         const distDur = estimateDetour(leg, pos);
@@ -532,17 +364,15 @@
             <span>★${place.rating || '-'}（${place.user_ratings_total || 0}件）</span>
             ${distDur ? `<span>${distDur}</span>` : ''}
             ${place.opening_hours?.open_now !== undefined ? `<span>${place.opening_hours.open_now ? '営業中' : '営業時間外'}</span>` : ''}
-          </div>
-        `;
-        item.addEventListener('click', () => {
-          map.panTo(pos); map.setZoom(15);
-          openInfo(place, leg);
-        });
+          </div>`;
+        item.addEventListener('click', () => { map.panTo(pos); map.setZoom(15); openInfo(place, leg); });
         list.appendChild(item);
       });
 
       if (!results.length) {
-        list.innerHTML = `<div style="padding:10px;color:#666;">見つかりませんでした。半径を広げるかカテゴリを増やして再検索してください。</div>`;
+        list.innerHTML = `<div style="padding:10px;color:#666;">
+          休憩スポットの候補が見つかりませんでした。半径を広げるか、カテゴリを増やして再検索してください。
+        </div>`;
       }
     }
 
@@ -560,60 +390,26 @@
             ${place.opening_hours?.open_now !== undefined ? `<span>${place.opening_hours.open_now ? '営業中' : '営業時間外'}</span>` : ''}
           </div>
           <a href="${navUrl}" target="_blank" style="display:inline-block;background:#06c755;color:#fff;padding:6px 10px;border-radius:8px;text-decoration:none;">ここへナビ</a>
-        </div>
-      `);
+        </div>`);
       infoWnd.open({ map, position: pos });
     }
 
-    function clearStopMarkers(){
-      stopMarkers.forEach(m => m.setMap(null));
-      stopMarkers = [];
-    }
-
-    function nearbySearchType(location, type, radius, openNow){
-      return new Promise(resolve => {
-        placesService.nearbySearch({
-          location, radius, type, openNow
-        }, (res, status) => resolve(status === 'OK' && res ? res : []));
-      });
-    }
-
-    function nearbySearchKeyword(location, keyword, radius, openNow){
-      return new Promise(resolve => {
-        placesService.nearbySearch({
-          location, radius, keyword, openNow
-        }, (res, status) => resolve(status === 'OK' && res ? res : []));
-      });
-    }
+    function clearStopMarkers(){ stopMarkers.forEach(m => m.setMap(null)); stopMarkers = []; }
 
     function getRouteMidpoint(route){
-      // overview_path の中央点
       const path = route.overview_path || [];
       if (path.length === 0) return route.legs[0].start_location;
       return path[Math.floor(path.length/2)];
     }
 
     function estimateDetour(leg, pos){
-      // ざっくり：目的地からスポットまでの直線距離を参考に表示
-      const d = google.maps.geometry ? haversine(leg.end_location, pos) : simpleApprox(leg.end_location, pos);
-      if (d == null) return '';
+      const toRad = x => x*Math.PI/180, lat1 = leg.end_location.lat(), lon1 = leg.end_location.lng(), lat2 = pos.lat(), lon2 = pos.lng();
+      const R=6371000, dLat=toRad(lat2-lat1), dLon=toRad(lon2-lon1);
+      const a=Math.sin(dLat/2)**2 + Math.cos(toRad(lat1))*Math.cos(toRad(lat2))*Math.sin(dLon/2)**2;
+      const d=2*R*Math.asin(Math.sqrt(a));
       const km = (d/1000).toFixed(1);
       return `目的地から約${km}km`;
     }
-
-    function haversine(a, b){
-      const toRad = x => x*Math.PI/180;
-      const lat1 = a.lat(), lon1 = a.lng(), lat2 = b.lat(), lon2 = b.lng();
-      const R=6371000; const dLat=toRad(lat2-lat1); const dLon=toRad(lon2-lon1);
-      const s1=Math.sin(dLat/2), s2=Math.sin(dLon/2);
-      const c=2*Math.asin(Math.sqrt(s1*s1+Math.cos(toRad(lat1))*Math.cos(toRad(lat2))*s2*s2));
-      return R*c;
-    }
-    function simpleApprox(a,b){
-      try{ return haversine(a,b); }catch(e){ return null; }
-    }
   </script>
-
-  <!-- 利用上のヒント：HTTPS必須（PCの現在地） -->
 </body>
 </html>
