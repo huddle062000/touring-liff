@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>ライドツーリングツール（</title>
+  <title>ライドツーリングツール（LINE × Google Maps）</title>
   <style>
     html, body { height: 100%; margin: 0; font-family: sans-serif; }
     header { padding: 10px 16px; background: #06c755; color: white; }
@@ -11,8 +11,8 @@
     #map { width: 100%; height: 60vh; }
     .panel { padding: 12px 16px; }
     input { padding: 8px; width: 100%; margin-bottom: 8px; border: 1px solid #ccc; border-radius: 6px; }
-    button { padding: 10px; font-size: 16px; border: none; border-radius: 8px; background: #06c755; color: white; width: 100%; }
-    button:disabled { opacity: 0.5; }
+    button { padding: 10px; font-size: 16px; border: none; border-radius: 8px; background: #06c755; color: white; width: 100%; cursor: pointer; }
+    button:disabled { opacity: 0.5; cursor: default; }
 
     /* 全画面表示用スタイル */
     body.fullmap header,
@@ -45,13 +45,14 @@
       font-size: 14px;
       box-shadow: 0 2px 8px rgba(0,0,0,.2);
       white-space: nowrap;
-      width: auto; /* フローティングは幅自動 */
+      width: auto;
+      cursor: pointer;
     }
     body.fullmap #fab { display: flex; }
   </style>
 </head>
 <body>
-  <header><h1>ツーリングルート共有</h1></header>
+  <header><h1>ライドツーリングツール</h1></header>
 
   <!-- 全画面時のみ見える戻るボタン -->
   <button id="back" type="button">戻る</button>
@@ -82,7 +83,6 @@
     </div>
 
     <button id="makeRoute">ルートを作る</button>
-    <!-- パネルにもボタンを残しておく（全画面時は隠れる） -->
     <button id="shareBtn" disabled>LINEで共有</button>
     <button id="navBtn" disabled>Googleナビで開く</button>
   </div>
@@ -93,17 +93,20 @@
     <div id="summary" style="font-size:14px;line-height:1.6;color:#333"></div>
   </div>
 
-  <!-- LINE SDK -->
+  <!-- LINE SDK（なければ無視してOK） -->
   <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
   <script>
     const LIFF_ID = "2008438848-3gJlGQvy";
-    async function initLIFF() {
-      await liff.init({ liffId: LIFF_ID });
-      const canShare = liff.isApiAvailable('shareTargetPicker');
-      document.getElementById('shareBtn').disabled = !canShare;
-      document.getElementById('shareBtnFab').disabled = !canShare;
-    }
-    initLIFF();
+    (async function initLIFFSafe() {
+      try {
+        if (window.liff) {
+          await liff.init({ liffId: LIFF_ID });
+          const canShare = liff.isApiAvailable('shareTargetPicker');
+        }
+      } catch (e) {
+        console.warn('LIFF init skipped:', e);
+      }
+    })();
   </script>
 
   <!-- Google Maps API -->
@@ -116,14 +119,12 @@
     async defer></script>
 
   <script>
-    // クリックリスナー
+    const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+
     document.getElementById('makeRoute').addEventListener('click', makeRoute);
     document.getElementById('shareBtn').addEventListener('click', shareOnLINE);
     document.getElementById('navBtn').addEventListener('click', openNavigation);
-
     document.getElementById('btn-loc').addEventListener('click', fillWithCurrentLocation);
-
-    // フローティング側のリスナー
     document.getElementById('shareBtnFab').addEventListener('click', shareOnLINE);
     document.getElementById('navBtnFab').addEventListener('click', openNavigation);
 
@@ -203,31 +204,25 @@
             `&destination=${encodeURIComponent(leg.end_address)}` +
             `&travelmode=driving${avoidStr}`;
 
-          // GoogleナビURL（アプリでナビ起動）
           const gmapsNavUrl =
             'https://www.google.com/maps/dir/?api=1' +
             `&origin=${encodeURIComponent(leg.start_address)}` +
             `&destination=${encodeURIComponent(leg.end_address)}` +
             `&travelmode=driving&dir_action=navigate`;
 
-          window._sharePayload = {
-            text:
+          window._sharePayload = { text:
               `出発地: ${leg.start_address}\n` +
               `目的地: ${leg.end_address}\n` +
               `距離: ${leg.distance.text}\n` +
               `時間: ${leg.duration.text}\n` +
               `設定: 高速=${avoidHighways ? '使わない' : '使う'} / 有料=${avoidTolls ? '使わない' : '使う'}\n\n` +
               `ルートを見る: ${gmapsUrl}`,
-            gmapsUrl,
-            gmapsNavUrl
-          };
+            gmapsUrl, gmapsNavUrl };
 
-          // パネル＆フローティング双方のボタンを有効化
           document.getElementById('shareBtn').disabled = false;
           document.getElementById('navBtn').disabled   = false;
           document.getElementById('shareBtnFab').disabled = false;
           document.getElementById('navBtnFab').disabled   = false;
-
         } else {
           alert('ルートを作れませんでした');
           document.getElementById('summary').textContent = '';
@@ -235,45 +230,39 @@
       });
     }
 
-    // Googleナビボタン処理（パネル／フローティング共通）
     function openNavigation() {
-      if (!window._sharePayload?.gmapsNavUrl) {
+      if (!window._sharePayload) {
         alert('先にルートを作成してください。');
         return;
       }
-      window.open(window._sharePayload.gmapsNavUrl, '_blank');
+      const url = isMobile ? window._sharePayload.gmapsNavUrl : window._sharePayload.gmapsUrl;
+      window.open(url, '_blank');
+      if (!isMobile) {
+        setTimeout(() => {
+          alert('PCブラウザでは音声ナビは使えません。ブラウザで経路を開きました。');
+        }, 300);
+      }
     }
 
-    // 共有（パネル／フローティング共通）
     async function shareOnLINE() {
       try {
         const payload = window._sharePayload;
         if (!payload) { alert('先に「ルートを作る」で経路を作成してください。'); return; }
-
-        // LIFF内なら shareTargetPicker、外ならシンプル共有URL
-        if (window.liff && liff.isInClient() && liff.isApiAvailable('shareTargetPicker')) {
+        if (window.liff && liff.isInClient && liff.isInClient() && liff.isApiAvailable && liff.isApiAvailable('shareTargetPicker')) {
           try {
-            const res = await liff.shareTargetPicker([
-              { type: 'text', text: payload.text }
-            ]);
+            const res = await liff.shareTargetPicker([{ type: 'text', text: payload.text }]);
             if (res) alert('送信しました！');
             return;
-          } catch (e) {
-            console.warn('shareTargetPickerに失敗。URL共有にフォールバック:', e);
-          }
+          } catch (e) { console.warn('shareTargetPicker失敗:', e); }
         }
         const shareUrl = 'https://line.me/R/share?text=' + encodeURIComponent(payload.text);
         window.open(shareUrl, '_blank');
-      } catch (e) {
-        alert('共有に失敗しました：\n' + (e?.message || String(e)));
-      }
+      } catch (e) { alert('共有に失敗しました：\n' + (e?.message || String(e))); }
     }
 
-    // 戻るボタン処理
     document.getElementById('back').addEventListener('click', () => {
       document.body.classList.remove('fullmap');
       if (window.google && map) google.maps.event.trigger(map, 'resize');
-      // フローティング側は一旦無効化しておく
       document.getElementById('shareBtnFab').disabled = true;
       document.getElementById('navBtnFab').disabled   = true;
       window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -281,5 +270,3 @@
   </script>
 </body>
 </html>
-
-
