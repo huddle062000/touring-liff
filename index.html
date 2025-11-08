@@ -18,7 +18,11 @@
 <body>
   <header><h1>ツーリングルート共有</h1></header>
   <div class="panel">
-    <input id="start" placeholder="出発地を入力（例：京都駅）">
+<!-- 出発地入力 + 現在地ボタン -->
+<div style="display:flex; gap:8px; align-items:center;">
+  <input id="start" placeholder="出発地を入力（例：京都駅）" style="flex:1">
+  <button type="button" id="btn-loc" style="width:auto; white-space:nowrap;">現在地</button>
+</div>
     <input id="end" placeholder="目的地を入力（例：美山 かやぶきの里）">
     <!-- 追加：経路オプション -->
 <div style="display:flex; gap:12px; align-items:center; margin:6px 0 10px">
@@ -203,6 +207,7 @@ async function shareOnLINE() {
   </script>
 </body>
 </html>
+
 
 
 
