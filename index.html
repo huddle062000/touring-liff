@@ -20,6 +20,17 @@
   <div class="panel">
     <input id="start" placeholder="出発地を入力（例：京都駅）">
     <input id="end" placeholder="目的地を入力（例：美山 かやぶきの里）">
+    <!-- 追加：経路オプション -->
+<div style="display:flex; gap:12px; align-items:center; margin:6px 0 10px">
+  <label style="display:flex; gap:6px; align-items:center;">
+    <input type="checkbox" id="opt-avoid-highways">
+    高速を使わない
+  </label>
+  <label style="display:flex; gap:6px; align-items:center;">
+    <input type="checkbox" id="opt-avoid-tolls">
+    有料道路を使わない
+  </label>
+</div>
     <button id="makeRoute">ルートを作る</button>
     <button id="shareBtn" disabled>LINEで共有</button>
   </div>
@@ -170,6 +181,7 @@ async function shareOnLINE() {
   </script>
 </body>
 </html>
+
 
 
 
