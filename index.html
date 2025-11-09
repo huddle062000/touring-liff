@@ -214,7 +214,7 @@
             if(idx>=0) map.overlayMapTypes.removeAt(idx);
           }
         }
-      },50); // ← 50msごと（約20fps）で滑らかフェード
+      },30); // ← 30msごと（約20fps）で滑らかフェード
     }
 
     function rebuildCurrentRadarLayer(){ if(radarLayer) fadeToFrame(radarIndex,true); }
@@ -244,3 +244,4 @@
   </script>
 </body>
 </html>
+
