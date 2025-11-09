@@ -3,126 +3,90 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>ライドツーリングツール（基本レーダー版）</title>
+  <title>ライドツーリングツール（LINE × Google Maps）</title>
   <style>
-    :root{ --brand:#06c755; }
-    html, body { height:100%; margin:0; font-family:system-ui, -apple-system, "Segoe UI", Roboto, "Hiragino Kaku Gothic ProN", "Noto Sans JP", sans-serif; }
-    header { padding:12px 16px; background:var(--brand); color:#fff; display:flex; align-items:center; gap:12px; flex-wrap:wrap; }
-    header h1 { font-size:18px; margin:0; }
-    #map { width:100%; height:65vh; background:#eef2f7; }
-    @media (max-width:768px){ #map { height:60vh; } }
-    .panel { padding:12px 16px; display:grid; gap:10px; border-top:1px solid #eee; }
-    .row { display:flex; gap:8px; flex-wrap:wrap; }
-    input, select, button {
-      padding:10px; border:1px solid #dcdcdc; border-radius:8px; font-size:14px; background:#fff;
-    }
-    button { background:var(--brand); color:#fff; border:none; cursor:pointer; }
-    .muted { color:#666; font-size:12px; }
-    .credit { font-size:11px; color:#666; }
+    html, body { height: 100%; margin: 0; font-family: sans-serif; }
+    header { padding: 10px 16px; background: #06c755; color: white; }
+    h1 { font-size: 18px; margin: 0; }
+
+    #map { width: 100%; height: 50vh; }
+    @media (min-width: 769px){ #map { height: 60vh; } }
+
+    .panel { padding: 12px 16px; background:#fff; }
+    input, select { padding: 8px; width: 100%; margin-bottom: 8px; border: 1px solid #ccc; border-radius: 6px; }
+    button { padding: 10px; font-size: 16px; border: none; background:#06c755; color:white; border-radius:6px; cursor:pointer; }
   </style>
 </head>
 <body>
   <header>
     <h1>ライドツーリングツール</h1>
-    <div class="muted">雨雲レーダー重ね表示（シンプル版）</div>
   </header>
 
   <div id="map"></div>
 
-  <section class="panel">
-    <div class="row">
-      <input id="tileUrl" style="flex:1 1 520px" placeholder="タイルURLテンプレ（{z}/{x}/{y} を含む）"
-        value="https://example.com/radar/now/256/{z}/{x}/{y}.png" />
-      <button id="apply">適用</button>
-      <button id="toggle">レーダー表示/非表示</button>
-    </div>
-    <div class="credit">
-      メモ：ここは <code>ImageMapType</code> でタイルを重ねるだけの基本版です。CORS不要。<br/>
-      例：RainViewer/JMA等のタイルURL（<code>{z}/{x}/{y}</code> を含む）に差し替えてください。
-    </div>
-  </section>
+  <div class="panel">
+    <input id="start" type="text" placeholder="出発地を入力" />
+    <input id="end" type="text" placeholder="目的地を入力" />
+    <select id="travelMode">
+      <option value="DRIVING">車・バイク</option>
+      <option value="WALKING">徒歩</option>
+    </select>
+    <button id="routeBtn">ルートを作る</button>
+  </div>
 
   <script>
-  // ▼ 地図
-  let map;
-  let radarLayer = null;
-  let radarOn = true;
+  let map, directionsService, directionsRenderer;
+  let radarLayer;
 
-  function initMap(){
-    map = new google.maps.Map(document.getElementById('map'), {
-      center: {lat:35.0116, lng:135.7681}, // 京都
-      zoom: 7,
-      mapTypeId: 'roadmap',
-      streetViewControl:false,
-      fullscreenControl:false
+  function initMap() {
+    map = new google.maps.Map(document.getElementById("map"), {
+      center: { lat: 35.0116, lng: 135.7681 }, // 京都
+      zoom: 8
     });
 
-    // 初期URLでレイヤー作成
-    const initUrl = document.getElementById('tileUrl').value.trim();
-    setRadarTemplate(initUrl);
+    directionsService = new google.maps.DirectionsService();
+    directionsRenderer = new google.maps.DirectionsRenderer();
+    directionsRenderer.setMap(map);
 
-    document.getElementById('apply').addEventListener('click', ()=>{
-      const u = document.getElementById('tileUrl').value.trim();
-      setRadarTemplate(u);
-    });
-
-    document.getElementById('toggle').addEventListener('click', ()=>{
-      radarOn = !radarOn;
-      if(radarOn){
-        if(radarLayer){ map.overlayMapTypes.insertAt(0, radarLayer); }
-      }else{
-        removeRadar();
-      }
-    });
-  }
-
-  function removeRadar(){
-    // overlayMapTypesは配列。該当を探して外す
-    const overlays = map.overlayMapTypes;
-    for(let i=overlays.getLength()-1;i>=0;i--){
-      const item = overlays.getAt(i);
-      if(item && item.__isRadar){ overlays.removeAt(i); }
-    }
-  }
-
-  function setRadarTemplate(urlTemplate){
-    // 以前のを外す
-    removeRadar();
-
-    // 入力チェック
-    if(!urlTemplate || !/\{z\}|\{x\}|\{y\}/.test(urlTemplate)){
-      alert('タイルURLに {z}/{x}/{y} を含めてください');
-      return;
-    }
-
-    // 新しい ImageMapType を作成（そのまま重ねるだけ）
-    const imgType = new google.maps.ImageMapType({
-      getTileUrl: function(coord, zoom){
-        // Googleのワールドは x が 0..2^z-1、y も同様（yは通常そのまま）
-        const max = 1 << zoom;
-        const x = ((coord.x % max) + max) % max; // wrap
-        const y = coord.y;
-        return urlTemplate
-          .replace('{z}', zoom)
-          .replace('{x}', x)
-          .replace('{y}', y);
+    // 雨雲レーダー追加部分（RainViewerやJMAタイルなど）
+    radarLayer = new google.maps.ImageMapType({
+      getTileUrl: function(coord, zoom) {
+        // タイルURL（例：RainViewerのAPIなどを使用）
+        // 実際のURLに置き換えてください
+        return `https://tilecache.rainviewer.com/v2/radar/now/256/${zoom}/${coord.x}/${coord.y}/2/1_1.png`;
       },
       tileSize: new google.maps.Size(256, 256),
-      opacity: 1.0,            // ← ここは固定（CSSで変えるなら個別対応可能）
-      name: 'Radar',
-      maxZoom: 18,
-      minZoom: 3
+      opacity: 0.6,
+      name: "Rain radar"
     });
-    imgType.__isRadar = true;   // 自分印
+    map.overlayMapTypes.insertAt(0, radarLayer);
 
-    radarLayer = imgType;
-    if(radarOn){
-      map.overlayMapTypes.insertAt(0, imgType);
-    }
+    document.getElementById("routeBtn").addEventListener("click", () => {
+      const start = document.getElementById("start").value;
+      const end = document.getElementById("end").value;
+      const mode = document.getElementById("travelMode").value;
+      if (!start || !end) {
+        alert("出発地と目的地を入力してください");
+        return;
+      }
+      directionsService.route(
+        {
+          origin: start,
+          destination: end,
+          travelMode: google.maps.TravelMode[mode],
+        },
+        (response, status) => {
+          if (status === "OK") {
+            directionsRenderer.setDirections(response);
+          } else {
+            alert("ルートを取得できませんでした: " + status);
+          }
+        }
+      );
+    });
   }
   </script>
 
-  <!-- Google Maps JS API（鍵を差し替え） -->
   <script async
     src="https://maps.googleapis.com/maps/api/js?key=YOUR_GOOGLE_MAPS_API_KEY&callback=initMap">
   </script>
