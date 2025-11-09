@@ -8,6 +8,7 @@
     html, body { height: 100dvh; margin: 0; font-family: sans-serif; }
     #map { width: 100%; height: 100dvh; }
 
+    /* 右下の丸いメインボタン（FAB） */
     #fabMain {
       position: fixed; right: 16px; bottom: 20px;
       width: 56px; height: 56px; border-radius: 50%;
@@ -18,6 +19,7 @@
     }
     #fabMain:hover { transform: scale(1.06); }
 
+    /* 右から出るスライドパネル */
     #sidePanel {
       position: fixed; top: 0; right: -310px;
       width: 300px; height: 100%;
@@ -37,7 +39,6 @@
     .btn { background:#06c755; color:#fff; }
     .btn:disabled { opacity:.5; cursor:default; }
     .btn-secondary { background:#999; color:#fff; }
-    .btn-gray { background:#666; color:#fff; }
 
     .switches { display:flex; gap:12px; }
     .switches label { display:flex; align-items:center; gap:6px; white-space:nowrap; }
@@ -48,19 +49,37 @@
     }
     #overlay.show { display:block; }
 
-    /* 雨雲の時刻ラベル */
-    #radarClock {
-      position: fixed; right: 12px; top: 12px; z-index: 1005;
-      background: rgba(0,0,0,.6); color:#fff; padding:6px 10px; border-radius:10px;
-      font-size: 12px; display:none;
+    /* 雨雲アニメのHUD */
+    #radarHud{
+      position:fixed; left:50%; bottom:18px; transform:translateX(-50%);
+      z-index:1006; display:flex; flex-direction:column; align-items:center; gap:8px;
     }
+    #radarClock{
+      background:rgba(0,0,0,.75); color:#fff; padding:6px 10px; border-radius:10px;
+      font-size:14px; letter-spacing:.5px; display:none; backdrop-filter: blur(2px);
+    }
+    #radarBar{
+      width:min(380px,86vw); height:6px; background:rgba(255,255,255,.6);
+      border-radius:999px; overflow:hidden; display:none;
+    }
+    #radarBar > span{ display:block; height:100%; width:0%; background:#06c755; }
   </style>
 </head>
 <body>
+
+  <!-- 地図 -->
   <div id="map"></div>
 
+  <!-- 雨雲レーダーのHUD（時刻＋バー） -->
+  <div id="radarHud">
+    <div id="radarClock">--</div>
+    <div id="radarBar"><span></span></div>
+  </div>
+
+  <!-- 右下のメニュー起動ボタン -->
   <div id="fabMain">☰</div>
 
+  <!-- スライドパネル -->
   <div id="sidePanel">
     <h2>ライドメニュー</h2>
 
@@ -83,13 +102,11 @@
     <button id="shareBtn" class="btn" disabled>LINEで共有</button>
     <button id="navBtn" class="btn" disabled>Googleナビで開く</button>
     <button id="rainToggleBtn" class="btn">雨雲レーダー（再生/停止）</button>
-    <button id="debugOSM" class="btn-gray">デバッグ：OSMを重ねる</button>
 
     <button id="closePanel" class="btn-secondary">閉じる</button>
   </div>
 
   <div id="overlay"></div>
-  <div id="radarClock">--</div>
 
   <!-- Google Maps -->
   <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBlN9ik-Y3CpEy3Uw9hXfBq0m2AoZWx_oM&libraries=places&language=ja&region=JP&callback=initMap" async defer></script>
@@ -105,9 +122,6 @@
     let radarTimer = null;   // setInterval
     let radarIndex = 0;      // 現在のフレーム
     const RADAR_OPACITY = 0.85;
-
-    // デバッグ用（オーバーレイ検証）
-    let osmLayer = null;
 
     function initMap(){
       map = new google.maps.Map(document.getElementById('map'), {
@@ -137,7 +151,6 @@
       document.getElementById('shareBtn').addEventListener('click', shareOnLINE);
       document.getElementById('navBtn').addEventListener('click', openNavigation);
       document.getElementById('rainToggleBtn').addEventListener('click', toggleRadarPlayback);
-      document.getElementById('debugOSM').addEventListener('click', toggleOSMDebug);
     });
 
     /* === 現在地の取得・表示 === */
@@ -199,136 +212,4 @@
           if (!useHighways) avoidParams.push('highways');
           if (!useTolls)    avoidParams.push('tolls');
           const avoidStr = avoidParams.length ? `&avoid=${avoidParams.join('%7C')}` : '';
-          const gmapsUrl = 'https://www.google.com/maps/dir/?api=1'
-            + `&origin=${encodeURIComponent(lastLeg.start_address)}`
-            + `&destination=${encodeURIComponent(lastLeg.end_address)}`
-            + `&travelmode=driving${avoidStr}`;
-          const gmapsNavUrl = `${gmapsUrl}&dir_action=navigate`;
-          window._sharePayload = {
-            text:`出発地: ${lastLeg.start_address}
-目的地: ${lastLeg.end_address}
-距離: ${lastLeg.distance.text}
-時間: ${lastLeg.duration.text}
-設定: 高速=${useHighways?'使う':'使わない'} / 有料=${useTolls?'使う':'使わない'}
-
-ルートを見る: ${gmapsUrl}`, gmapsUrl, gmapsNavUrl
-          };
-          document.getElementById('shareBtn').disabled = false;
-          document.getElementById('navBtn').disabled = false;
-        } else { alert('ルートを作れませんでした（' + status + '）'); }
-      });
-    }
-
-    function shareOnLINE(){
-      const p = window._sharePayload;
-      if(!p){ alert('先にルートを作成してください'); return; }
-      const shareUrl = 'https://line.me/R/share?text=' + encodeURIComponent(p.text);
-      window.open(shareUrl, '_blank');
-    }
-
-    function openNavigation(){
-      const p = window._sharePayload;
-      if(!p){ alert('先にルートを作成してください'); return; }
-      const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
-      window.open(isMobile ? p.gmapsNavUrl : p.gmapsUrl, '_blank');
-      if(!isMobile) setTimeout(()=>alert('PCブラウザでは音声ナビは使えません。ブラウザで経路を開きました。'), 250);
-    }
-
-    /* ===== デバッグ：OSMタイルを重ねる（オーバーレイ動作確認） ===== */
-    function toggleOSMDebug(){
-      if(osmLayer){
-        const idx = map.overlayMapTypes.getArray().indexOf(osmLayer);
-        if(idx>=0) map.overlayMapTypes.removeAt(idx);
-        osmLayer = null;
-        alert('OSMオーバーレイ：OFF');
-        return;
-      }
-      osmLayer = new google.maps.ImageMapType({
-        getTileUrl: (c,z)=> `https://tile.openstreetmap.org/${z}/${c.x}/${c.y}.png`,
-        tileSize:new google.maps.Size(256,256),
-        opacity:0.6, name:'OSM-DEBUG'
-      });
-      map.overlayMapTypes.push(osmLayer);
-      alert('OSMオーバーレイ：ON（見えたら仕組みはOK。雨が無いと雨雲は透明です）');
-    }
-
-    /* ===== 雨雲レーダー：直近フレームをアニメ再生 ===== */
-    async function toggleRadarPlayback(){
-      // 再生中なら停止＆クリア
-      if(radarTimer || radarLayers.length){
-        stopRadar();
-        alert('雨雲レーダー：停止しました');
-        return;
-      }
-      try{
-        const res = await fetch("https://api.rainviewer.com/public/weather-maps.json");
-        if(!res.ok) throw new Error("HTTP " + res.status);
-        const data = await res.json();
-        const frames = [...(data?.radar?.past||[]), ...(data?.radar?.nowcast||[])];
-        if(!frames.length){ alert("雨雲データがありません"); return; }
-
-        // 直近の6〜8枚を使用（多すぎると重い）
-        radarFrames = frames.slice(-8);
-
-        // 最低ズーム確保
-        if(map.getZoom() < 6) map.setZoom(7);
-
-        // レイヤー生成
-        radarLayers = radarFrames.map(fr=>{
-          // CORSフリーの 0_0.png 形式（透過）
-          const base = `https://tilecache.rainviewer.com${fr.path}/256/{z}/{x}/{y}/0/0_0.png?ts=${Date.now()}`;
-          return new google.maps.ImageMapType({
-            getTileUrl: function(coord, zoom){
-              const n = 1 << zoom; let x = coord.x % n; if(x<0) x += n;
-              return base.replace('{z}',zoom).replace('{x}',x).replace('{y}',coord.y);
-            },
-            tileSize: new google.maps.Size(256,256),
-            opacity: RADAR_OPACITY, name:'RainViewer'
-          });
-        });
-
-        // 1枚目を載せて再生開始
-        radarIndex = 0;
-        map.overlayMapTypes.push(radarLayers[0]);
-        showClock(radarFrames[0].time);
-        radarTimer = setInterval(()=>{
-          // 直前のレイヤーを剥がして次を載せる
-          const arr = map.overlayMapTypes.getArray();
-          const prev = radarLayers[radarIndex];
-          const idx = arr.indexOf(prev);
-          if(idx>=0) map.overlayMapTypes.removeAt(idx);
-
-          radarIndex = (radarIndex + 1) % radarLayers.length;
-          map.overlayMapTypes.push(radarLayers[radarIndex]);
-          showClock(radarFrames[radarIndex].time);
-        }, 600); // 再生速度（ms）
-        alert('雨雲レーダー：再生開始');
-      } catch(e){
-        console.error(e);
-        alert("雨雲レーダーを読み込めませんでした。\nエラー: " + e.message);
-      }
-    }
-
-    function stopRadar(){
-      if(radarTimer){ clearInterval(radarTimer); radarTimer = null; }
-      // 全レイヤーを外す
-      radarLayers.forEach(layer=>{
-        const idx = map.overlayMapTypes.getArray().indexOf(layer);
-        if(idx>=0) map.overlayMapTypes.removeAt(idx);
-      });
-      radarLayers = [];
-      radarFrames = [];
-      hideClock();
-    }
-
-    function showClock(unix){
-      const el = document.getElementById('radarClock');
-      const d = new Date(unix*1000);
-      const j = new Intl.DateTimeFormat('ja-JP', { month:'2-digit', day:'2-digit', hour:'2-digit', minute:'2-digit', hour12:false, timeZone:'Asia/Tokyo' }).format(d);
-      el.textContent = `雨雲 ${j} JST`;
-      el.style.display = 'block';
-    }
-    function hideClock(){ document.getElementById('radarClock').style.display = 'none'; }
-  </script>
-</body>
-</html>
+          const gmapsUrl = 'https://www.go
