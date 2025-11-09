@@ -18,6 +18,7 @@
       background: #06c755;
       color: white;
     }
+
     h1 { font-size: 18px; margin: 0; }
 
     /* 地図を一番下に固定 */
@@ -59,10 +60,20 @@
     }
 
     label.chk {
-      display:flex;
-      gap:6px;
-      align-items:center;
-      margin-right:12px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      white-space: nowrap;
+    }
+
+    /* ✅ 高速・有料チェックボックスを横並びに */
+    .route-options {
+      display: flex;
+      justify-content: flex-start;
+      gap: 16px;
+      flex-wrap: nowrap;
+      margin: 6px 0 10px;
+      overflow-x: auto;
     }
 
     /* エラーバナー */
@@ -115,10 +126,13 @@
       <button type="button" id="btn-loc" style="width:auto; white-space:nowrap;">現在地</button>
     </div>
     <input id="end" placeholder="目的地を入力（例：美山 かやぶきの里）">
-    <div style="display:flex; gap:12px; align-items:center; margin:6px 0 10px; flex-wrap:wrap;">
+
+    <!-- ✅ 横並び修正版 -->
+    <div class="route-options">
       <label class="chk"><input type="checkbox" id="opt-avoid-highways"> 高速を使わない</label>
       <label class="chk"><input type="checkbox" id="opt-avoid-tolls"> 有料道路を使わない</label>
     </div>
+
     <button id="makeRoute">ルートを作る</button>
     <button id="shareBtn" disabled>LINEで共有</button>
     <button id="navBtn" disabled>Googleナビで開く</button>
@@ -181,7 +195,6 @@
       });
     });
 
-    // 現在地入力
     function fillWithCurrentLocation() {
       if (!navigator.geolocation) { alert('この端末では位置情報が使えません'); return; }
       navigator.geolocation.getCurrentPosition(
@@ -197,7 +210,6 @@
       );
     }
 
-    // ルート作成
     function makeRoute() {
       const start = document.getElementById('start').value;
       const end   = document.getElementById('end').value;
@@ -213,21 +225,12 @@
           directionsRenderer.setDirections(result);
 
           const leg = result.routes[0].legs[0];
-          const optTxt = `（高速: ${avoidHighways ? '使わない' : '使う'} / 有料: ${avoidTolls ? '使わない' : '使う'}）`;
-          alert(`距離: ${leg.distance.text}\n時間: ${leg.duration.text}\n${optTxt}`);
-
-          const avoidParams = [];
-          if (avoidHighways) avoidParams.push('highways');
-          if (avoidTolls)    avoidParams.push('tolls');
-          const avoidStr = avoidParams.length ? `&avoid=${avoidParams.join('%7C')}` : '';
-          const gmapsUrl   = 'https://www.google.com/maps/dir/?api=1'
-            + `&origin=${encodeURIComponent(leg.start_address)}`
-            + `&destination=${encodeURIComponent(leg.end_address)}`
-            + `&travelmode=driving${avoidStr}`;
-          const gmapsNavUrl= 'https://www.google.com/maps/dir/?api=1'
-            + `&origin=${encodeURIComponent(leg.start_address)}`
-            + `&destination=${encodeURIComponent(leg.end_address)}`
-            + `&travelmode=driving&dir_action=navigate`;
+          alert(`距離: ${leg.distance.text}\n時間: ${leg.duration.text}`);
+          const avoidStr = (avoidHighways || avoidTolls)
+            ? '&avoid=' + [avoidHighways?'highways':'', avoidTolls?'tolls':''].filter(Boolean).join('%7C')
+            : '';
+          const gmapsUrl = `https://www.google.com/maps/dir/?api=1&origin=${encodeURIComponent(leg.start_address)}&destination=${encodeURIComponent(leg.end_address)}&travelmode=driving${avoidStr}`;
+          const gmapsNavUrl = `${gmapsUrl}&dir_action=navigate`;
 
           window._sharePayload = { text:`出発地: ${leg.start_address}\n目的地: ${leg.end_address}\n距離: ${leg.distance.text}\n時間: ${leg.duration.text}\n\nルートを見る: ${gmapsUrl}`, gmapsUrl, gmapsNavUrl };
           document.getElementById('shareBtn').disabled = false;
@@ -346,3 +349,5 @@
   </script>
 </body>
 </html>
+
+
