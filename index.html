@@ -59,6 +59,20 @@
       background: #ffefef; color:#900; border:1px solid #f5b5b5; padding:8px 12px; border-radius:8px; display:none;
       box-shadow: 0 2px 8px rgba(0,0,0,.15);
     }
+
+    /* ▼ 雨雲レーダーパネル（Windy埋め込み） ▼ */
+    #radarPanel {
+      position: fixed; right: 12px; bottom: 12px; z-index: 1100;
+      width: min(480px, 96vw); height: min(70vh, 80vh);
+      background: #fff; border-radius: 12px; box-shadow: 0 6px 20px rgba(0,0,0,.25);
+      display: none; overflow: hidden;
+    }
+    #radarPanel header {
+      display:flex; justify-content: space-between; align-items:center;
+      padding:8px 10px; border-bottom:1px solid #eee; background:#f7f7f7;
+    }
+    #radarClose { width:auto; background:#999; }
+    #radarFrame { width: 100%; height: calc(100% - 42px); border: 0; display: block; }
   </style>
 </head>
 <body>
@@ -84,6 +98,8 @@
     <button id="shareBtn" disabled>LINEで共有</button>
     <button id="navBtn" disabled>Googleナビで開く</button>
     <button id="stopsBtn" disabled>休憩スポット提案</button>
+    <!-- ▼ 追加：雨雲レーダー -->
+    <button id="radarBtn" type="button">雨雲レーダー</button>
   </div>
 
   <!-- 下：サマリー（距離・時間のみ） -->
@@ -97,6 +113,8 @@
     <button id="navBtnFab" disabled>Googleナビ開始</button>
     <button id="shareBtnFab" disabled>LINEで共有</button>
     <button id="stopsBtnFab" disabled>休憩スポット提案</button>
+    <!-- ▼ 追加：雨雲レーダー（FAB） -->
+    <button id="radarBtnFab" type="button">雨雲レーダー</button>
   </div>
 
   <!-- 休憩スポット ドロワー -->
@@ -126,6 +144,15 @@
       <button id="stopsRefresh" style="width:auto;">再検索</button>
     </div>
     <div id="stopsList"></div>
+  </div>
+
+  <!-- ▼ 雨雲レーダーパネル（Windy） -->
+  <div id="radarPanel">
+    <header>
+      <div>雨雲レーダー（Windy）</div>
+      <button id="radarClose">閉じる</button>
+    </header>
+    <iframe id="radarFrame" title="Windy Radar"></iframe>
   </div>
 
   <!-- LINE SDK（任意） -->
@@ -191,6 +218,13 @@
 
       document.getElementById('jumpCtl').addEventListener('click', () => {
         document.getElementById('controls').scrollIntoView({ behavior:'smooth', block:'start' });
+      });
+
+      // ▼ 雨雲レーダー（通常ボタン / FAB / 閉じる）
+      document.getElementById('radarBtn').addEventListener('click', openRadarPanel);
+      document.getElementById('radarBtnFab').addEventListener('click', openRadarPanel);
+      document.getElementById('radarClose').addEventListener('click', () => {
+        document.getElementById('radarPanel').style.display = 'none';
       });
     });
 
@@ -424,10 +458,45 @@
     function estimateDetour(leg, pos){
       const toRad = x => x*Math.PI/180, lat1 = leg.end_location.lat(), lon1 = leg.end_location.lng(), lat2 = pos.lat(), lon2 = pos.lng();
       const R=6371000, dLat=toRad(lat2-lat1), dLon=toRad(lon2-lon1);
-      const a=Math.sin(dLat/2)**2 + Math.cos(toRad(lat1))*Math.cos(toRad(lat2))*Math.sin(dLon/2)**2;
+      const a=Math.sin(dLat/2)**2 + Math.cos(toRad(lat1))*Math.cos(toRad(lat2))*sin2(dLon/2);
+      function sin2(x){ return Math.sin(x)**2; }
       const d=2*R*Math.asin(Math.sqrt(a));
       const km = (d/1000).toFixed(1);
       return `目的地から約${km}km`;
+    }
+
+    /* ===== 雨雲レーダー（Windy埋め込み） ===== */
+    function openRadarPanel(){
+      const panel = document.getElementById('radarPanel');
+      const frame = document.getElementById('radarFrame');
+
+      // 現在の地図中心＆ズームをWindyへ反映
+      const c = map.getCenter();
+      const z = map.getZoom();
+      // Windyのズームは概ねGoogleと同等スケールでOK
+      const lat = c.lat().toFixed(4);
+      const lon = c.lng().toFixed(4);
+      const zoom = Math.max(4, Math.min(12, z)); // だいたいの範囲に丸める
+
+      const windyURL = `https://embed.windy.com/embed2.html` +
+        `?lat=${lat}&lon=${lon}` +
+        `&zoom=${zoom}` +
+        `&level=surface` +
+        `&overlay=rain` +          // 雨量ヒートマップ
+        `&product=radar` +         // レーダーアニメーション
+        `&menu=&message=&marker=` +
+        `&calendar=` +
+        `&pressure=` +
+        `&type=map` +
+        `&location=coordinates` +
+        `&detail=&detailLat=${lat}&detailLon=${lon}` +
+        `&metricWind=default&metricTemp=default` +
+        `&radarRange=-1` +
+        `&lang=ja`;
+
+      // 表示のたびに更新（現在地に追従）
+      frame.src = windyURL;
+      panel.style.display = 'block';
     }
   </script>
 
