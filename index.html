@@ -77,4 +77,54 @@
   }
 
   function removeRadar(){
-    // overlayMapT
+    // overlayMapTypesは配列。該当を探して外す
+    const overlays = map.overlayMapTypes;
+    for(let i=overlays.getLength()-1;i>=0;i--){
+      const item = overlays.getAt(i);
+      if(item && item.__isRadar){ overlays.removeAt(i); }
+    }
+  }
+
+  function setRadarTemplate(urlTemplate){
+    // 以前のを外す
+    removeRadar();
+
+    // 入力チェック
+    if(!urlTemplate || !/\{z\}|\{x\}|\{y\}/.test(urlTemplate)){
+      alert('タイルURLに {z}/{x}/{y} を含めてください');
+      return;
+    }
+
+    // 新しい ImageMapType を作成（そのまま重ねるだけ）
+    const imgType = new google.maps.ImageMapType({
+      getTileUrl: function(coord, zoom){
+        // Googleのワールドは x が 0..2^z-1、y も同様（yは通常そのまま）
+        const max = 1 << zoom;
+        const x = ((coord.x % max) + max) % max; // wrap
+        const y = coord.y;
+        return urlTemplate
+          .replace('{z}', zoom)
+          .replace('{x}', x)
+          .replace('{y}', y);
+      },
+      tileSize: new google.maps.Size(256, 256),
+      opacity: 1.0,            // ← ここは固定（CSSで変えるなら個別対応可能）
+      name: 'Radar',
+      maxZoom: 18,
+      minZoom: 3
+    });
+    imgType.__isRadar = true;   // 自分印
+
+    radarLayer = imgType;
+    if(radarOn){
+      map.overlayMapTypes.insertAt(0, imgType);
+    }
+  }
+  </script>
+
+  <!-- Google Maps JS API（鍵を差し替え） -->
+  <script async
+    src="https://maps.googleapis.com/maps/api/js?key=YOUR_GOOGLE_MAPS_API_KEY&callback=initMap">
+  </script>
+</body>
+</html>
