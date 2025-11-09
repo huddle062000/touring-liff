@@ -53,14 +53,14 @@
     .controls .group { display:flex; gap:10px; flex-wrap:wrap; align-items:center; }
     .badge { background:#06c755; color:#fff; border-radius:12px; padding:2px 8px; font-size:12px; }
 
-    /* 簡易エラーバナー */
+    /* エラーバナー */
     #errBanner {
       position: fixed; left: 12px; top: 12px; z-index: 2000;
       background: #ffefef; color:#900; border:1px solid #f5b5b5; padding:8px 12px; border-radius:8px; display:none;
       box-shadow: 0 2px 8px rgba(0,0,0,.15);
     }
 
-    /* ▼ RainViewer 操作パネル ▼ */
+    /* RainViewerコントローラ */
     #rvCtl {
       position: fixed; left: 12px; bottom: 12px; z-index: 1002;
       background: rgba(255,255,255,0.96); border:1px solid #eee; border-radius: 12px;
@@ -97,7 +97,7 @@
     <button id="rainToggleBtn" type="button">雨雲（マップに重ねる）</button>
   </div>
 
-  <div id="summaryPanel" class="panel" style="padding-top:8px">
+  <div id="summaryPanel" class="panel">
     <div id="summary" style="font-size:14px;line-height:1.6;color:#333">距離と時間はここに表示されます。</div>
   </div>
 
@@ -107,34 +107,6 @@
     <button id="shareBtnFab" disabled>LINEで共有</button>
     <button id="stopsBtnFab" disabled>休憩スポット提案</button>
     <button id="rainToggleBtnFab" type="button">雨雲レイヤー</button>
-  </div>
-
-  <div id="stopsDrawer">
-    <header>
-      <div>休憩スポット候補 <span id="stopsCount" class="badge">0件</span></div>
-      <button id="stopsClose" style="width:auto;background:#999;">閉じる</button>
-    </header>
-    <div class="controls">
-      <div class="group">
-        <label class="chk"><input type="checkbox" class="stop-type" value="道の駅" checked>道の駅</label>
-        <label class="chk"><input type="checkbox" class="stop-type" value="cafe" checked>カフェ</label>
-        <label class="chk"><input type="checkbox" class="stop-type" value="gas_station" checked>GS</label>
-        <label class="chk"><input type="checkbox" class="stop-type" value="parking" checked>駐車場</label>
-        <label class="chk"><input type="checkbox" class="stop-type" value="tourist_attraction">観光</label>
-      </div>
-      <div class="group">
-        半径
-        <select id="stopRadius" style="width:auto;">
-          <option value="2000">2km</option>
-          <option value="3000">3km</option>
-          <option value="5000" selected>5km</option>
-          <option value="8000">8km</option>
-        </select>
-        <label class="chk"><input type="checkbox" id="onlyOpen">営業中のみ</label>
-      </div>
-      <button id="stopsRefresh" style="width:auto;">再検索</button>
-    </div>
-    <div id="stopsList"></div>
   </div>
 
   <div id="rvCtl">
@@ -151,98 +123,124 @@
     </div>
   </div>
 
-  <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
-  <script>
-    const LIFF_ID = "2008438848-3gJlGQvy";
-    (async function initLIFFSafe() {
-      try { if (window.liff) { await liff.init({ liffId: LIFF_ID }); } }
-      catch(e){ console.warn('LIFF init skipped:', e); }
-    })();
-  </script>
+  <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBlN9ik-Y3CpEy3Uw9hXfBq0m2AoZWx_oM&libraries=places&language=ja&region=JP&callback=initMap" async defer></script>
 
   <script>
-    let map, directionsService, directionsRenderer, geocoder, placesService, infoWnd;
-    let lastRouteResult = null;
-    let radarTimestamps = [], radarIndex = 0, radarTimer = null, radarLayer = null, radarOpacity = 0.6;
+    let map, radarTimestamps = [], radarIndex = 0, radarTimer = null, radarLayer = null, radarOpacity = 0.6;
 
-    function initMap(){
-      map = new google.maps.Map(document.getElementById('map'),{center:{lat:35.0116,lng:135.7681},zoom:9});
-      directionsService = new google.maps.DirectionsService();
-      directionsRenderer = new google.maps.DirectionsRenderer({map});
-      geocoder = new google.maps.Geocoder();
-      placesService = new google.maps.places.PlacesService(map);
-      infoWnd = new google.maps.InfoWindow();
+    function initMap() {
+      map = new google.maps.Map(document.getElementById('map'), {
+        center: { lat: 35.0116, lng: 135.7681 }, zoom: 8
+      });
     }
-    window.initMap = initMap;
 
-    document.addEventListener('DOMContentLoaded',()=>{
-      document.getElementById('rainToggleBtn').addEventListener('click',toggleRadar);
-      document.getElementById('rainToggleBtnFab').addEventListener('click',toggleRadar);
-      document.getElementById('rvPlay').addEventListener('click',(e)=>togglePlay(e.currentTarget));
-      document.getElementById('rvPrev').addEventListener('click',()=>stepFrame(-1));
-      document.getElementById('rvNext').addEventListener('click',()=>stepFrame(1));
-      document.getElementById('rvOff').addEventListener('click',turnRadarOff);
+    document.addEventListener('DOMContentLoaded', () => {
+      document.getElementById('rainToggleBtn').addEventListener('click', toggleRadar);
+      document.getElementById('rainToggleBtnFab').addEventListener('click', toggleRadar);
+      document.getElementById('rvPlay').addEventListener('click', (e)=>togglePlay(e.currentTarget));
+      document.getElementById('rvPrev').addEventListener('click', ()=>stepFrame(-1));
+      document.getElementById('rvNext').addEventListener('click', ()=>stepFrame(1));
+      document.getElementById('rvOff').addEventListener('click', turnRadarOff);
       document.getElementById('rvOpacity').addEventListener('input',(e)=>{
         const v=Number(e.target.value);
         document.getElementById('rvOpacityVal').textContent=v+'%';
-        radarOpacity=v/100; if(radarLayer) rebuildCurrentRadarLayer();
+        radarOpacity=v/100; 
+        if(radarLayer) rebuildCurrentRadarLayer();
       });
     });
 
-    async function toggleRadar(){
+    async function toggleRadar() {
       const ctl=document.getElementById('rvCtl');
-      if(radarLayer){turnRadarOff();return;}
-      const res=await fetch('https://api.rainviewer.com/public/weather-maps.json');
-      const data=await res.json();
-      radarTimestamps=[...(data?.radar?.past||[]).map(f=>f.time),...(data?.radar?.nowcast||[]).map(f=>f.time)];
-      if(!radarTimestamps.length){alert('雨雲データ取得失敗');return;}
-      radarIndex=radarTimestamps.length-1;
-      showRadarFrame(radarIndex);
-      ctl.style.display='block';
+      if(radarLayer){ turnRadarOff(); return; }
+
+      try {
+        const res=await fetch('https://api.rainviewer.com/public/weather-maps.json');
+        const data=await res.json();
+        radarTimestamps=[...(data?.radar?.past||[]).map(f=>f.time),...(data?.radar?.nowcast||[]).map(f=>f.time)];
+        if(!radarTimestamps.length){ alert('雨雲データ取得失敗'); return; }
+        radarIndex=radarTimestamps.length-1;
+        fadeToFrame(radarIndex,true);
+        ctl.style.display='block';
+      } catch(e){ alert('雨雲データ取得エラー'); console.error(e); }
     }
 
-    function turnRadarOff(){
-      if(radarTimer){clearInterval(radarTimer);radarTimer=null;}
-      if(radarLayer){
-        const idx=map.overlayMapTypes.getArray().indexOf(radarLayer);
-        if(idx>=0) map.overlayMapTypes.removeAt(idx);
-        radarLayer=null;
-      }
+    function turnRadarOff() {
+      stopAnimation();
+      map.overlayMapTypes.clear();
+      radarLayer=null;
       document.getElementById('rvCtl').style.display='none';
     }
 
-    function tileUrl(ts){return`https://tilecache.rainviewer.com/v2/radar/${ts}/256/{z}/{x}/{y}/2/1_1.png`;}
-    function buildLayer(ts){
+    function tileUrl(ts) { return `https://tilecache.rainviewer.com/v2/radar/${ts}/256/{z}/{x}/{y}/2/1_1.png`; }
+
+    function buildLayer(ts,opacity) {
       const t=tileUrl(ts);
       return new google.maps.ImageMapType({
         getTileUrl:(coord,zoom)=>{
-          const n=1<<zoom; let x=coord.x%n;if(x<0)x+=n;
+          const n=1<<zoom; let x=coord.x%n; if(x<0)x+=n;
           return t.replace('{z}',zoom).replace('{x}',x).replace('{y}',coord.y);
-        },tileSize:new google.maps.Size(256,256),opacity:radarOpacity});
+        },
+        tileSize:new google.maps.Size(256,256),
+        opacity:opacity
+      });
     }
 
-    function showRadarFrame(i){
-      if(radarLayer){
-        const idx=map.overlayMapTypes.getArray().indexOf(radarLayer);
-        if(idx>=0) map.overlayMapTypes.removeAt(idx);
-      }
-      const ts=radarTimestamps[i]; if(!ts) return;
-      radarLayer=buildLayer(ts);
-      map.overlayMapTypes.insertAt(0,radarLayer);
+    function fadeToFrame(i,instant=false){
+      if(!radarTimestamps.length) return;
+      const ts=radarTimestamps[i];
+      const newLayer=buildLayer(ts,0);
+      map.overlayMapTypes.insertAt(0,newLayer);
+
       const d=new Date(ts*1000);
       document.getElementById('rvStamp').textContent=
         d.toLocaleString('ja-JP',{month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'});
+
+      const oldLayer=radarLayer;
+      radarLayer=newLayer;
+
+      if(instant){ radarLayer.setOpacity(radarOpacity); if(oldLayer) map.overlayMapTypes.removeAt(1); return; }
+
+      let alpha=0;
+      const fadeTimer=setInterval(()=>{
+        alpha+=0.1;
+        radarLayer.setOpacity(radarOpacity*alpha);
+        if(oldLayer) oldLayer.setOpacity(radarOpacity*(1-alpha));
+        if(alpha>=1){
+          clearInterval(fadeTimer);
+          radarLayer.setOpacity(radarOpacity);
+          if(oldLayer){
+            const arr=map.overlayMapTypes.getArray();
+            const idx=arr.indexOf(oldLayer);
+            if(idx>=0) map.overlayMapTypes.removeAt(idx);
+          }
+        }
+      },50); // ← 50msごと（約20fps）で滑らかフェード
     }
 
-    function rebuildCurrentRadarLayer(){if(radarLayer) showRadarFrame(radarIndex);}
-    function stepFrame(dir){radarIndex=(radarIndex+dir+radarTimestamps.length)%radarTimestamps.length;showRadarFrame(radarIndex);}
+    function rebuildCurrentRadarLayer(){ if(radarLayer) fadeToFrame(radarIndex,true); }
+
+    function stepFrame(dir){
+      if(!radarTimestamps.length) return;
+      radarIndex=(radarIndex+dir+radarTimestamps.length)%radarTimestamps.length;
+      fadeToFrame(radarIndex);
+    }
+
     function togglePlay(btn){
-      if(radarTimer){clearInterval(radarTimer);radarTimer=null;btn.textContent='▶︎ 再生';return;}
+      if(radarTimer){
+        clearInterval(radarTimer);
+        radarTimer=null;
+        btn.textContent='▶︎ 再生';
+        return;
+      }
       btn.textContent='⏸ 一時停止';
-      radarTimer=setInterval(()=>stepFrame(1),500);
+      radarTimer=setInterval(()=>stepFrame(1),400); // ← 400msでスムーズ再生
+    }
+
+    function stopAnimation(){
+      if(radarTimer){ clearInterval(radarTimer); radarTimer=null; }
+      const btn=document.getElementById('rvPlay');
+      if(btn) btn.textContent='▶︎ 再生';
     }
   </script>
-
-  <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBlN9ik-Y3CpEy3Uw9hXfBq0m2AoZWx_oM&libraries=places&language=ja&region=JP&callback=initMap" async defer></script>
 </body>
 </html>
