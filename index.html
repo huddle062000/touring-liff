@@ -3,162 +3,78 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>ライドツーリングツール（レーダー滑らか表示）</title>
+  <title>ライドツーリングツール（基本レーダー版）</title>
   <style>
-    :root{
-      --brand:#06c755;
-    }
-    html, body { height: 100%; margin: 0; font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Hiragino Kaku Gothic ProN", "Noto Sans JP", sans-serif; }
-    header { padding: 12px 16px; background: var(--brand); color: #fff; display:flex; align-items:center; gap:12px; flex-wrap:wrap;}
-    header h1 { font-size: 18px; margin: 0; }
-    header .sub { opacity: .9; font-size: 12px; }
-    #map { width: 100%; height: 58vh; background:#f2f2f2; }
-    @media (min-width: 769px){ #map { height: 65vh; } }
-
-    .panel { padding: 12px 16px; background:#fff; display:grid; gap:10px; border-top:1px solid #eee; }
-    .row { display:grid; gap:8px; grid-template-columns: 1fr 1fr; }
-    .row > * { min-width:0; }
-    label { font-size:13px; color:#333; display:block; margin-bottom:4px; }
-    input[type="range"]{ width: 100%; }
+    :root{ --brand:#06c755; }
+    html, body { height:100%; margin:0; font-family:system-ui, -apple-system, "Segoe UI", Roboto, "Hiragino Kaku Gothic ProN", "Noto Sans JP", sans-serif; }
+    header { padding:12px 16px; background:var(--brand); color:#fff; display:flex; align-items:center; gap:12px; flex-wrap:wrap; }
+    header h1 { font-size:18px; margin:0; }
+    #map { width:100%; height:65vh; background:#eef2f7; }
+    @media (max-width:768px){ #map { height:60vh; } }
+    .panel { padding:12px 16px; display:grid; gap:10px; border-top:1px solid #eee; }
+    .row { display:flex; gap:8px; flex-wrap:wrap; }
     input, select, button {
-      padding: 10px; border:1px solid #dcdcdc; border-radius: 8px; font-size: 14px; background:#fff;
+      padding:10px; border:1px solid #dcdcdc; border-radius:8px; font-size:14px; background:#fff;
     }
-    button { background: var(--brand); color:#fff; border:none; cursor:pointer; }
-    button:disabled { opacity:.6; cursor:not-allowed; }
+    button { background:var(--brand); color:#fff; border:none; cursor:pointer; }
     .muted { color:#666; font-size:12px; }
-    .legend { display:flex; align-items:center; gap:8px; font-size:12px; }
-    .swatch { width:18px; height:10px; border-radius:2px; background:linear-gradient(to right, rgba(173,206,255,.15), rgba(0,76,255,1)); flex:0 0 120px; }
-    .tips { font-size:12px; color:#444; background:#f8fafc; border:1px solid #eef2f7; border-radius:10px; padding:10px; }
-    .note { font-size:12px; color:#555; }
-    .footer { padding:12px 16px; font-size:12px; color:#666; }
+    .credit { font-size:11px; color:#666; }
   </style>
 </head>
 <body>
   <header>
     <h1>ライドツーリングツール</h1>
-    <div class="sub">雨雲レーダー：滑らか再生 &amp; 青の濃淡</div>
+    <div class="muted">雨雲レーダー重ね表示（シンプル版）</div>
   </header>
 
   <div id="map"></div>
 
   <section class="panel">
     <div class="row">
-      <div>
-        <label>再生速度（フレーム時間）<span class="muted" id="speedLabel"></span></label>
-        <input id="frameMs" type="range" min="300" max="1500" step="50" value="800" />
-      </div>
-      <div>
-        <label>クロスフェード時間<span class="muted" id="fadeLabel"></span></label>
-        <input id="fadeMs" type="range" min="200" max="1200" step="50" value="500" />
-      </div>
+      <input id="tileUrl" style="flex:1 1 520px" placeholder="タイルURLテンプレ（{z}/{x}/{y} を含む）"
+        value="https://example.com/radar/now/256/{z}/{x}/{y}.png" />
+      <button id="apply">適用</button>
+      <button id="toggle">レーダー表示/非表示</button>
     </div>
-
-    <div class="row">
-      <div>
-        <label>レーダー不透明度<span class="muted" id="alphaLabel"></span></label>
-        <input id="alpha" type="range" min="20" max="100" step="1" value="85" />
-      </div>
-      <div>
-        <label>最大FPS<span class="muted" id="fpsLabel"></span></label>
-        <input id="fps" type="range" min="24" max="60" step="1" value="60" />
-      </div>
-    </div>
-
-    <div class="legend">
-      <div class="swatch"></div>
-      <div>薄い雨雲 → 薄い青　/　<strong>濃い雨雲 → 濃い青</strong></div>
-    </div>
-
-    <div class="row">
-      <button id="btnPlay">▶ 再生</button>
-      <button id="btnPause">⏸ 一時停止</button>
-    </div>
-
-    <div class="tips">
-      <strong>frames のURLを実データに差し替えてください：</strong><br>
-      ・各フレームは同じ投影のタイルURL（<code>{z}/{x}/{y}.png</code> 形式）<br>
-      ・10分ごと等の時系列を複数用意（古→新の順）<br>
-      ・CORS（<code>Access-Control-Allow-Origin: *</code>）が有効なタイルを使用
+    <div class="credit">
+      メモ：ここは <code>ImageMapType</code> でタイルを重ねるだけの基本版です。CORS不要。<br/>
+      例：RainViewer/JMA等のタイルURL（<code>{z}/{x}/{y}</code> を含む）に差し替えてください。
     </div>
   </section>
 
-  <div class="footer">
-    ヒント：Zoomやパン操作中も自動で追従します。青味の雰囲気は下の <code>blueRamp()</code> で微調整可能。
-  </div>
-
   <script>
-  /** ▼ ユーザー調整ポイント（初期値） */
-  let FRAME_DURATION = 800;       // 1コマの表示(ms)
-  let CROSSFADE_DURATION = 500;   // コマ間ブレンド(ms)
-  let FPS_CAP = 60;               // 上限FPS
-  let OVERLAY_ALPHA = 0.85;       // レーダーの不透明度(0..1)
+  // ▼ 地図
+  let map;
+  let radarLayer = null;
+  let radarOn = true;
 
-  // ▼ 時系列タイルURL（古→新）。{z}/{x}/{y} を必ず含める。
-  // 例（ダミー）：実際は提供元のURLに差し替えてください。
-  const frames = [
-    { time: '2025-11-09T11:00:00Z', url: 'https://example.com/radar/1100/{z}/{x}/{y}.png' },
-    { time: '2025-11-09T11:10:00Z', url: 'https://example.com/radar/1110/{z}/{x}/{y}.png' },
-    { time: '2025-11-09T11:20:00Z', url: 'https://example.com/radar/1120/{z}/{x}/{y}.png' },
-    { time: '2025-11-09T11:30:00Z', url: 'https://example.com/radar/1130/{z}/{x}/{y}.png' }
-  ];
-
-  // ▼ 青グラデ（弱→強）：好みで調整
-  function blueRamp(intensity01){
-    const t = Math.max(0, Math.min(1, intensity01));
-    // 暗部を持ち上げつつ、強雨は濃く。色相は青寄り(210°)固定。
-    const l = 0.18 + 0.60 * t;   // lightness 18%→78%
-    const s = 0.80 + 0.20 * t;   // saturation 80%→100%
-    return hslToRgb(210/360, s, l); // [r,g,b] (0..255)
-  }
-  function hslToRgb(h, s, l){
-    const f = (n)=>{
-      const k=(n+h*12)%12, a=s*Math.min(l,1-l);
-      return l - a*Math.max(-1, Math.min(k-3, 9-k, 1));
-    }
-    return [f(0), f(8), f(4)].map(v=>Math.round(v*255));
-  }
-
-  /** ▼ Google Maps 初期化 */
-  let map, radarOverlay;
-
-  async function initMap(){
+  function initMap(){
     map = new google.maps.Map(document.getElementById('map'), {
-      center: {lat: 35.0116, lng: 135.7681}, // 京都あたり
+      center: {lat:35.0116, lng:135.7681}, // 京都
       zoom: 7,
       mapTypeId: 'roadmap',
       streetViewControl:false,
       fullscreenControl:false
     });
 
-    radarOverlay = new SmoothRadarOverlay(map, frames);
-    radarOverlay.setAlpha(OVERLAY_ALPHA);
-    radarOverlay.setTiming(FRAME_DURATION, CROSSFADE_DURATION, FPS_CAP);
-    radarOverlay.start();
+    // 初期URLでレイヤー作成
+    const initUrl = document.getElementById('tileUrl').value.trim();
+    setRadarTemplate(initUrl);
 
-    // UIの同期
-    syncLabels();
+    document.getElementById('apply').addEventListener('click', ()=>{
+      const u = document.getElementById('tileUrl').value.trim();
+      setRadarTemplate(u);
+    });
+
+    document.getElementById('toggle').addEventListener('click', ()=>{
+      radarOn = !radarOn;
+      if(radarOn){
+        if(radarLayer){ map.overlayMapTypes.insertAt(0, radarLayer); }
+      }else{
+        removeRadar();
+      }
+    });
   }
 
-  /** ▼ なめらかアニメ & 青色化 OverlayView */
-  class SmoothRadarOverlay extends google.maps.OverlayView {
-    constructor(map, frames){
-      super();
-      this.map = map;
-      this.frames = frames;
-      this.canvas = document.createElement('canvas');
-      this.ctx = this.canvas.getContext('2d', { willReadFrequently: true });
-      this.tileSize = 256;
-      this.cache = new Map(); // key -> ImageBitmap
-      this.isRunning = false;
-      this.frameIndex = 0;
-      this.lastTick = 0;
-      this.phase = 0; // 0..(FRAME_DURATION+CROSSFADE)
-      this._frameMs = FRAME_DURATION;
-      this._fadeMs  = CROSSFADE_DURATION;
-      this._fpsCap  = FPS_CAP;
-      this.setMap(map);
-
-      // 画面更新イベントの頻度を抑えつつ追従
-      this._redrawQueued = false;
-      map.addListener('bounds_changed', () => {
-        if(this._redraw_
+  function removeRadar(){
+    // overlayMapT
