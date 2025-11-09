@@ -73,8 +73,8 @@
     <input id="end" placeholder="目的地を入力（例：美山 かやぶきの里）">
 
     <div class="switches">
-      <label><input type="checkbox" id="use-highways"> 高速使う</label>
-      <label><input type="checkbox" id="use-tolls"> 有料道路使う</label>
+      <label><input type="checkbox" id="use-highways" checked> 高速使う</label>
+      <label><input type="checkbox" id="use-tolls" checked> 有料道路使う</label>
     </div>
 
     <button id="makeRoute" class="btn">ルート作成</button>
@@ -99,13 +99,19 @@
     let radarLayer = null;     // 雨雲レイヤー
     let radarOpacity = 0.6;
 
+    // 現在地の表示用
+    let myMarker = null, myAccuracy = null;
+
     function initMap(){
       map = new google.maps.Map(document.getElementById('map'), {
-        center:{lat:35.0116,lng:135.7681}, zoom: 9
+        center:{lat:35.0116,lng:135.7681}, zoom: 9, mapTypeControl: false
       });
       directionsService = new google.maps.DirectionsService();
       directionsRenderer = new google.maps.DirectionsRenderer({ map });
       geocoder = new google.maps.Geocoder();
+
+      // 起動時に現在地表示（HTTPS必須）
+      tryLocateMe(true);
     }
 
     document.addEventListener('DOMContentLoaded',()=>{
@@ -123,7 +129,7 @@
       closeBtn.addEventListener('click', closePanel);
 
       // 入力系
-      document.getElementById('btn-loc').addEventListener('click', fillWithCurrentLocation);
+      document.getElementById('btn-loc').addEventListener('click', ()=>tryLocateMe(false,true));
       document.getElementById('makeRoute').addEventListener('click', makeRoute);
 
       // アクション
@@ -132,17 +138,55 @@
       document.getElementById('rainToggleBtn').addEventListener('click', toggleRadarLatest);
     });
 
-    // 現在地→出発地
-    function fillWithCurrentLocation(){
-      if (!navigator.geolocation){ alert('位置情報が使えません'); return; }
-      navigator.geolocation.getCurrentPosition(pos=>{
-        const loc = { lat: pos.coords.latitude, lng: pos.coords.longitude };
-        map.setCenter(loc); map.setZoom(12);
-        geocoder.geocode({ location: loc }, (results, status) => {
-          document.getElementById('start').value =
-            (status==='OK' && results && results[0]) ? results[0].formatted_address : `${loc.lat},${loc.lng}`;
-        });
-      }, ()=>alert('現在地を取得できませんでした'));
+    /* === 現在地の取得・表示 === */
+    function tryLocateMe(centerOnFound = false, fillStart = false){
+      if (!navigator.geolocation){
+        console.warn('Geolocation not supported');
+        return;
+      }
+      navigator.geolocation.getCurrentPosition(
+        (pos)=>{
+          const lat = pos.coords.latitude, lng = pos.coords.longitude;
+          const acc = pos.coords.accuracy || 0;
+          const loc = { lat, lng };
+
+          // 青いドット（SVGアイコン）
+          const svg = {
+            path: "M8 0a8 8 0 1 0 0.001 0z",
+            fillColor: "#4285F4", fillOpacity: 1, strokeWeight: 2,
+            strokeColor: "white", scale: 1
+          };
+          if (!myMarker){
+            myMarker = new google.maps.Marker({ position: loc, map, icon: svg, zIndex: 999 });
+          } else {
+            myMarker.setPosition(loc);
+          }
+
+          // 精度サークル
+          if (!myAccuracy){
+            myAccuracy = new google.maps.Circle({
+              strokeColor: "#4285F4", strokeOpacity: 0.3, strokeWeight: 1,
+              fillColor: "#4285F4", fillOpacity: 0.08, map, center: loc, radius: acc
+            });
+          } else {
+            myAccuracy.setCenter(loc); myAccuracy.setRadius(acc);
+          }
+
+          if (centerOnFound){ map.setCenter(loc); map.setZoom(14); }
+
+          if (fillStart){
+            geocoder.geocode({ location: loc }, (results, status)=>{
+              document.getElementById('start').value =
+                (status==='OK'&&results&&results[0]) ? results[0].formatted_address : `${lat.toFixed(6)},${lng.toFixed(6)}`;
+            });
+          }
+        },
+        (err)=>{
+          console.warn('Geolocation error:', err);
+          if (fillStart) alert('現在地を取得できませんでした');
+        },
+        { enableHighAccuracy:true, timeout:10000, maximumAge:0 }
+      );
     }
 
     // ルート作成
@@ -164,7 +208,6 @@
           directionsRenderer.setDirections(result);
           lastLeg = result.routes[0].legs[0];
 
-          // 共有用テキスト作成
           const avoidParams = [];
           if (!useHighways) avoidParams.push('highways');
           if (!useTolls)    avoidParams.push('tolls');
@@ -214,22 +257,25 @@
       if(!isMobile) setTimeout(()=>alert('PCブラウザでは音声ナビは使えません。ブラウザで経路を開きました。'), 250);
     }
 
-    /* ===== 雨雲レーダー（最新フレームのON/OFFだけ簡易実装） ===== */
+    /* ===== 雨雲レーダー（最新フレームをON/OFF） ===== */
     async function toggleRadarLatest(){
-      if(radarLayer){
-        const idx = map.overlayMapTypes.getArray().indexOf(radarLayer);
-        if(idx>=0) map.overlayMapTypes.removeAt(idx);
-        radarLayer = null;
-        return;
-      }
       try{
-        const res = await fetch('https://api.rainviewer.com/public/weather-maps.json');
+        if(radarLayer){
+          const idx = map.overlayMapTypes.getArray().indexOf(radarLayer);
+          if(idx>=0) map.overlayMapTypes.removeAt(idx);
+          radarLayer = null;
+          return;
+        }
+
+        const res = await fetch('https://api.rainviewer.com/public/weather-maps.json', {mode:'cors'});
+        if(!res.ok){ throw new Error('HTTP '+res.status); }
         const data = await res.json();
         const all = [...(data?.radar?.past||[]), ...(data?.radar?.nowcast||[])];
-        if(!all.length) return alert('雨雲データを取得できませんでした');
+        if(!all.length){ alert('雨雲データがありません'); return; }
 
         const ts = all[all.length-1].time; // 最新
         const tUrl = `https://tilecache.rainviewer.com/v2/radar/${ts}/256/{z}/{x}/{y}/2/1_1.png`;
+
         radarLayer = new google.maps.ImageMapType({
           getTileUrl:(coord,zoom)=>{
             const n=1<<zoom; let x=coord.x%n; if(x<0)x+=n;
@@ -238,9 +284,12 @@
           tileSize:new google.maps.Size(256,256),
           opacity:radarOpacity
         });
-        map.overlayMapTypes.insertAt(0, radarLayer);
+
+        // push で一番上に重ねる（insertAt(0)で下に入る環境があるため）
+        map.overlayMapTypes.push(radarLayer);
       }catch(e){
-        alert('雨雲データ取得エラー'); console.error(e);
+        console.error('RainViewer error:', e);
+        alert('雨雲レーダーを表示できませんでした。\nネット接続・HTTPS・コンソールのエラーをご確認ください。');
       }
     }
   </script>
