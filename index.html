@@ -6,35 +6,65 @@
   <title>ライドツーリングツール（LINE × Google Maps）</title>
   <style>
     html, body {
-      height: 100%;
+      height: 100dvh;
       margin: 0;
       font-family: sans-serif;
       display: flex;
       flex-direction: column;
     }
 
-    header { padding: 10px 16px; background: #06c755; color: white; }
-    h1 { font-size: 18px; margin: 0; }
+    /* ✅ header削除済み（この部分不要） */
+    /* header { padding: 10px 16px; background: #06c755; color: white; } */
 
-    #map { width: 100%; flex-grow: 1; height: 60vh; }
-    @media (min-width: 769px){ #map { height: 70vh; } }
+    /* 地図を全画面に */
+    #map {
+      width: 100%;
+      flex-grow: 1;
+      height: 100dvh;
+    }
 
-    .panel { padding: 12px 16px; background:#fff; }
+    .panel {
+      padding: 12px 16px;
+      background:#fff;
+    }
 
     input, select {
-      padding: 8px; width: 100%; margin-bottom: 8px;
-      border: 1px solid #ccc; border-radius: 6px;
+      padding: 8px;
+      width: 100%;
+      margin-bottom: 8px;
+      border: 1px solid #ccc;
+      border-radius: 6px;
     }
+
     button {
-      padding: 10px; font-size: 16px; border: none; border-radius: 8px;
-      background: #06c755; color: white; width: 100%; cursor: pointer;
+      padding: 10px;
+      font-size: 16px;
+      border: none;
+      border-radius: 8px;
+      background: #06c755;
+      color: white;
+      width: 100%;
+      cursor: pointer;
     }
+
     button:disabled { opacity: .5; cursor: default; }
 
-    label.chk { display:flex; align-items:center; gap:6px; white-space: nowrap; }
-    .route-options { display:flex; gap:16px; flex-wrap: nowrap; margin: 6px 0 10px; overflow-x:auto; }
+    label.chk {
+      display:flex;
+      align-items:center;
+      gap:6px;
+      white-space: nowrap;
+    }
 
-    /* ========== フローティングボタン(FAB) ========== */
+    .route-options {
+      display:flex;
+      gap:16px;
+      flex-wrap: nowrap;
+      margin: 6px 0 10px;
+      overflow-x:auto;
+    }
+
+    /* フローティングボタン */
     #fabMain {
       position: fixed;
       right: 16px;
@@ -55,11 +85,11 @@
     }
     #fabMain:hover { transform: scale(1.05); }
 
-    /* ========== スライドパネル ========== */
+    /* スライドパネル */
     #sidePanel {
       position: fixed;
       top: 0;
-      right: -260px; /* 初期は隠す */
+      right: -260px;
       width: 240px;
       height: 100%;
       background: rgba(255,255,255,0.97);
@@ -72,12 +102,7 @@
       z-index: 1099;
     }
     #sidePanel.open { right: 0; }
-
-    #sidePanel h2 {
-      font-size: 16px;
-      margin: 0 0 8px 0;
-      color:#06c755;
-    }
+    #sidePanel h2 { font-size: 16px; margin: 0 0 8px 0; color:#06c755; }
     #sidePanel button {
       width: 100%;
       padding: 10px;
@@ -86,11 +111,9 @@
       background: #06c755;
       color: white;
     }
-    #sidePanel .closeBtn {
-      background: #999;
-    }
+    #sidePanel .closeBtn { background: #999; }
 
-    /* 背景の半透明オーバーレイ */
+    /* 背景オーバーレイ */
     #overlay {
       position: fixed;
       top: 0; left: 0; right: 0; bottom: 0;
@@ -103,15 +126,14 @@
   </style>
 </head>
 <body>
-  <header><h1>ライドツーリングツール</h1></header>
 
   <!-- 操作パネル -->
-  <div id="controls" class="panel">
+  <div id="controls" class="panel" style="position:absolute; top:10px; left:50%; transform:translateX(-50%); width:90%; max-width:420px; border-radius:12px; box-shadow:0 2px 8px rgba(0,0,0,.2); z-index:1001; background:rgba(255,255,255,0.95);">
     <div style="display:flex; gap:8px; align-items:center;">
-      <input id="start" placeholder="出発地を入力（例：京都駅）" style="flex:1">
+      <input id="start" placeholder="出発地（例：京都駅）" style="flex:1">
       <button type="button" id="btn-loc" style="width:auto;">現在地</button>
     </div>
-    <input id="end" placeholder="目的地を入力（例：美山 かやぶきの里）">
+    <input id="end" placeholder="目的地（例：美山 かやぶきの里）">
     <div class="route-options">
       <label class="chk"><input type="checkbox" id="opt-avoid-highways"> 高速を使わない</label>
       <label class="chk"><input type="checkbox" id="opt-avoid-tolls"> 有料道路を使わない</label>
@@ -175,11 +197,10 @@
         overlay.classList.remove('show');
       }
 
-      // 雨雲ボタン動作はここに追記可能
+      // 雨雲ボタン動作（ダミー）
       document.getElementById('rainToggleBtn').addEventListener('click', ()=>alert("雨雲レーダー起動！"));
     });
 
-    // 現在地入力
     function fillWithCurrentLocation() {
       if (!navigator.geolocation) { alert('位置情報が使えません'); return; }
       navigator.geolocation.getCurrentPosition(
@@ -195,7 +216,6 @@
       );
     }
 
-    // ルート作成（簡略）
     function makeRoute() {
       const start = document.getElementById('start').value;
       const end   = document.getElementById('end').value;
