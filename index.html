@@ -9,18 +9,17 @@
     height: 100%;
     margin: 0;
     font-family: system-ui, "Noto Sans JP", sans-serif;
-    /* ✅ overflow:hidden を削除（候補が隠れないように） */
     overflow: visible !important;
   }
 
-  /* 地図を全画面に */
+  /* 地図全画面 */
   #map {
     position: fixed;
     inset: 0;
     width: 100%;
     height: 100vh;
     z-index: 1;
-    overflow: visible !important; /* ✅ 候補を隠さない */
+    overflow: visible !important;
   }
 
   /* 検索バー */
@@ -31,7 +30,7 @@
     transform: translateX(-50%);
     width: 92%;
     max-width: 420px;
-    z-index: 9999; /* ✅ 候補より上に出す */
+    z-index: 9999;
   }
 
   .search-box {
@@ -110,11 +109,11 @@ window.initMap = function(){
     fullscreenControl: false
   });
 
-  // Googleのオートコンプリート設定
+  // Googleオートコンプリート設定（住所を非表示）
   const input = document.getElementById("destInput");
   autocomplete = new google.maps.places.Autocomplete(input, {
-    fields: ["geometry", "name", "formatted_address"],
-    // country制限は外しておく
+    fields: ["geometry", "name"], // ✅ 住所を取得しない
+    types: ["establishment", "point_of_interest", "geocode"], // ✅ 候補を施設名・地名に限定
   });
   autocomplete.bindTo("bounds", map);
 
@@ -125,7 +124,7 @@ window.initMap = function(){
       alert("場所が見つかりませんでした。別のキーワードで試してください。");
       return;
     }
-    dropPin(place.geometry.location, place.name || place.formatted_address);
+    dropPin(place.geometry.location, place.name);
   });
 
   // 現在地ボタン
@@ -158,7 +157,7 @@ function dropPin(latlng, title){
 }
 </script>
 
-<!-- Google Maps API (Placesライブラリ必須) -->
+<!-- Google Maps API（Placesライブラリ必須） -->
 <script async
   src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBlN9ik-Y3CpEy3Uw9hXfBq0m2AoZWx_oM&callback=initMap&libraries=places">
 </script>
