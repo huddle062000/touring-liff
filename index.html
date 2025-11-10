@@ -3,27 +3,109 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>Map Test</title>
+<title>ライドツーリングツール</title>
 <style>
-  html,body{height:100%;margin:0}
-  /* これで高さゼロ問題を完全回避 */
-  #map{
-    position:fixed; inset:0;       /* 画面全面に固定 */
-    width:100%; height:100vh;      /* 念のため両方指定 */
-    z-index:1; background:#eaeaea; /* ロード前に灰色で確認できる */
+  html,body{height:100%;margin:0;font-family:system-ui,"Noto Sans JP",sans-serif;overflow:hidden}
+  /* 地図は全面固定（白画面対策） */
+  #map{position:fixed;inset:0;width:100%;height:100vh;z-index:1}
+
+  /* 検索バー（Autocompleteのドロップダウンが隠れないようにz-indexを最前面に） */
+  .search-wrap{
+    position:fixed; top:12px; left:50%; transform:translateX(-50%);
+    width:92%; max-width:420px; z-index:9999;
   }
+  .search-box{
+    display:flex; align-items:center; gap:8px;
+    background:#fff; border-radius:30px; padding:6px 12px;
+    box-shadow:0 2px 6px rgba(0,0,0,.25);
+  }
+  .search-box img.logo{width:28px;height:28px}
+  #destInput{
+    flex:1;border:none;outline:none;background:transparent;font-size:16px;color:#333;
+  }
+
+  /* 現在地ボタン */
+  #locateBtn{
+    position:fixed; right:16px; bottom:100px; width:56px; height:56px;
+    border:none;border-radius:50%;background:#fff;box-shadow:0 2px 8px rgba(0,0,0,.3);
+    cursor:pointer; z-index:5;
+  }
+  #locateBtn img{width:26px;height:26px}
 </style>
 </head>
 <body>
+
+<div class="search-wrap">
+  <div class="search-box">
+    <img class="logo" src="https://upload.wikimedia.org/wikipedia/commons/e/e7/Google_Maps_icon_%282020%29.svg" alt="">
+    <input id="destInput" type="text" placeholder="目的地" autocomplete="off">
+  </div>
+</div>
+
 <div id="map"></div>
+
+<button id="locateBtn" title="現在地へ移動">
+  <img src="https://img.icons8.com/ios-filled/50/near-me.png" alt="">
+</button>
+
 <script>
-  window.initMap = function(){
-    new google.maps.Map(document.getElementById('map'),{
-      center:{lat:35.0116,lng:135.7681}, zoom:12,
-      mapTypeControl:false, streetViewControl:false, fullscreenControl:false
-    });
-  };
+let map, marker, autocomplete;
+
+window.initMap = function(){
+  map = new google.maps.Map(document.getElementById('map'),{
+    center:{lat:35.0116,lng:135.7681}, zoom:13,
+    mapTypeControl:false, streetViewControl:false, fullscreenControl:false
+  });
+
+  // ★ 純正Autocomplete（候補ドロップダウンはGoogle側が描画）
+  const input = document.getElementById('destInput');
+  autocomplete = new google.maps.places.Autocomplete(input, {
+    fields:['geometry','name','formatted_address','place_id'],
+    // ※ typesやcountry制限は外してあります。必要なら追加可。
+  });
+  autocomplete.bindTo('bounds', map);
+
+  autocomplete.addListener('place_changed', ()=>{
+    const place = autocomplete.getPlace();
+    if(!place || !place.geometry){
+      // 稀にgeometryなし → TextSearchで再トライ
+      textSearchFallback(input.value);
+      return;
+    }
+    dropPin(place.geometry.location, place.name || place.formatted_address);
+  });
+
+  document.getElementById('locateBtn').addEventListener('click', ()=>{
+    if(!navigator.geolocation){ alert('この端末は現在地取得に対応していません。'); return; }
+    navigator.geolocation.getCurrentPosition(
+      pos => dropPin({lat:pos.coords.latitude,lng:pos.coords.longitude}, '現在地'),
+      ()=> alert('現在地を取得できませんでした。'),
+      {enableHighAccuracy:true, timeout:10000}
+    );
+  });
+};
+
+function dropPin(latlng, title){
+  if(marker) marker.setMap(null);
+  marker = new google.maps.Marker({map, position:latlng, title:title||'目的地'});
+  map.panTo(latlng); map.setZoom(15);
+}
+
+// Autocompleteがgeometryを返さない場合の保険
+function textSearchFallback(query){
+  const service = new google.maps.places.PlacesService(map);
+  service.textSearch({query}, (results, status)=>{
+    if(status === google.maps.places.PlacesServiceStatus.OK && results[0]?.geometry){
+      const r = results[0];
+      dropPin(r.geometry.location, r.name);
+    }else{
+      alert('場所が見つかりませんでした。別のキーワードでお試しください。');
+    }
+  });
+}
 </script>
-<script async src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBlN9ik-Y3CpEy3Uw9hXfBq0m2AoZWx_oM&callback=initMap"></script>
+
+<!-- Placesライブラリ必須（あなたのキー使用） -->
+<script async src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBlN9ik-Y3CpEy3Uw9hXfBq0m2AoZWx_oM&callback=initMap&libraries=places"></script>
 </body>
 </html>
