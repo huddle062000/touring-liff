@@ -1,167 +1,208 @@
 <!doctype html>
 <html lang="ja">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>ライドツーリングツール</title>
-  <style>
-    html, body {
-      height: 100%;
-      margin: 0;
-      font-family: "Roboto", "Noto Sans JP", sans-serif;
-      overflow: hidden;
-    }
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>ライドツーリングツール</title>
+<style>
+  html, body { height:100%; margin:0; font-family:"Roboto","Noto Sans JP",sans-serif; overflow:hidden; }
+  /* 地図 */
+  #map { position:absolute; inset:0; width:100%; height:100vh; z-index:1; }
 
-    /* === 地図 === */
-    #map {
-      position: absolute;
-      top: 0; left: 0;
-      width: 100%; height: 100vh;
-      z-index: 1;
-    }
+  /* 検索バー（Googleマップ風） */
+  .search-wrap{
+    position:absolute; top:12px; left:50%; transform:translateX(-50%);
+    width:92%; max-width:420px; z-index:10;
+  }
+  .search-container{
+    display:flex; align-items:center; gap:8px;
+    background:#fff; border-radius:30px; padding:6px 10px;
+    box-shadow:0 2px 6px rgba(0,0,0,.25);
+  }
+  .search-container img.logo{ width:28px; height:28px; }
+  #destInput{
+    flex:1; border:none; outline:none; font-size:16px; color:#333; background:transparent;
+  }
+  .mic-btn{ background:none; border:none; cursor:pointer; padding:4px; }
+  .mic-btn img{ width:22px; height:22px; }
 
-    /* === 検索バー（Googleマップ風） === */
-    .search-container {
-      position: absolute;
-      top: 12px;
-      left: 50%;
-      transform: translateX(-50%);
-      width: 90%;
-      max-width: 380px;
-      background: #fff;
-      border-radius: 30px;
-      box-shadow: 0 2px 6px rgba(0,0,0,0.25);
-      display: flex;
-      align-items: center;
-      padding: 6px 10px;
-      z-index: 10;
-    }
+  /* 予測候補ドロップダウン */
+  .suggest{
+    margin-top:6px; background:#fff; border-radius:14px; overflow:hidden;
+    box-shadow:0 6px 16px rgba(0,0,0,.25);
+  }
+  .suggest.hidden{ display:none; }
+  .suggest ul{ list-style:none; margin:0; padding:6px 0; max-height:260px; overflow:auto; }
+  .suggest li{
+    display:flex; align-items:flex-start; gap:10px; padding:10px 14px; cursor:pointer;
+  }
+  .suggest li:hover, .suggest li.active{ background:#f5f7f9; }
+  .suggest .pin{ width:18px; margin-top:2px; opacity:.8; }
+  .primary-text{ font-size:15px; color:#111; }
+  .secondary-text{ font-size:12px; color:#666; margin-top:2px; }
 
-    .search-container img {
-      width: 28px; height: 28px;
-      margin-right: 6px;
-    }
-
-    .search-container input {
-      flex: 1;
-      border: none;
-      outline: none;
-      font-size: 16px;
-      color: #333;
-    }
-
-    .mic-btn {
-      background: none;
-      border: none;
-      cursor: pointer;
-      padding: 4px;
-    }
-
-    .mic-btn img {
-      width: 22px;
-      height: 22px;
-    }
-
-    /* === 現在地ボタン === */
-    #locateBtn {
-      position: absolute;
-      bottom: 100px;
-      right: 16px;
-      width: 56px;
-      height: 56px;
-      border-radius: 50%;
-      background: #fff;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.3);
-      border: none;
-      cursor: pointer;
-      z-index: 5;
-    }
-
-    #locateBtn img {
-      width: 26px;
-      height: 26px;
-    }
-
-  </style>
+  /* 現在地ボタン */
+  #locateBtn{
+    position:absolute; right:16px; bottom:100px; width:56px; height:56px; z-index:5;
+    border:none; border-radius:50%; background:#fff; box-shadow:0 2px 8px rgba(0,0,0,.3); cursor:pointer;
+  }
+  #locateBtn img{ width:26px; height:26px; }
+</style>
 </head>
 <body>
-  <!-- 検索バー -->
-  <div class="search-container">
-    <img src="https://upload.wikimedia.org/wikipedia/commons/e/e7/Google_Maps_icon_%282020%29.svg" alt="map">
-    <input id="destInput" type="text" placeholder="目的地">
-    <button class="mic-btn">
-      <img src="https://img.icons8.com/ios-filled/50/000000/microphone.png" alt="mic">
-    </button>
+  <!-- 検索UI -->
+  <div class="search-wrap">
+    <div class="search-container">
+      <img class="logo" src="https://upload.wikimedia.org/wikipedia/commons/e/e7/Google_Maps_icon_%282020%29.svg" alt="">
+      <input id="destInput" type="text" placeholder="目的地">
+      <button class="mic-btn" title="音声"><img src="https://img.icons8.com/ios-filled/50/000000/microphone.png" alt=""></button>
+    </div>
+    <!-- 候補リスト -->
+    <div id="suggestBox" class="suggest hidden">
+      <ul id="suggestList"></ul>
+    </div>
   </div>
 
   <!-- 地図 -->
   <div id="map"></div>
 
   <!-- 現在地ボタン -->
-  <button id="locateBtn">
-    <img src="https://img.icons8.com/ios-filled/50/000000/near-me.png" alt="locate">
+  <button id="locateBtn" title="現在地へ移動">
+    <img src="https://img.icons8.com/ios-filled/50/000000/near-me.png" alt="">
   </button>
 
-  <script>
-    let map, marker;
+<script>
+let map, marker;
+let placesService, autocompleteService;
+let activeIndex = -1; // キーボード選択用
 
-    window.initMap = function() {
-      map = new google.maps.Map(document.getElementById("map"), {
-        center: { lat: 35.0116, lng: 135.7681 },
-        zoom: 13,
-        mapTypeControl: false,
-        streetViewControl: false,
-        fullscreenControl: false,
-      });
+// 初期化
+window.initMap = function () {
+  map = new google.maps.Map(document.getElementById("map"), {
+    center: { lat: 35.0116, lng: 135.7681 },
+    zoom: 13,
+    mapTypeControl: false, streetViewControl: false, fullscreenControl: false
+  });
+  placesService = new google.maps.places.PlacesService(map);
+  autocompleteService = new google.maps.places.AutocompleteService();
 
-      // 目的地入力でマーカーを立てる
-      const input = document.getElementById("destInput");
-      const autocomplete = new google.maps.places.Autocomplete(input);
-      autocomplete.bindTo("bounds", map);
+  setupSearch();
+  setupLocate();
+};
 
-      autocomplete.addListener("place_changed", () => {
-        const place = autocomplete.getPlace();
-        if (!place.geometry) {
-          alert("場所が見つかりませんでした。");
-          return;
+// 目的地検索（候補表示）
+function setupSearch(){
+  const input = document.getElementById('destInput');
+  const box = document.getElementById('suggestBox');
+  const list = document.getElementById('suggestList');
+
+  // 入力のデバウンス
+  let timer = null;
+  input.addEventListener('input', () => {
+    const q = input.value.trim();
+    clearTimeout(timer);
+    if(!q){ hideSuggest(); return; }
+    timer = setTimeout(() => fetchPredictions(q), 150);
+  });
+
+  // 矢印/Enterで操作
+  input.addEventListener('keydown', (e) => {
+    const items = list.querySelectorAll('li');
+    if(box.classList.contains('hidden') || items.length === 0) return;
+
+    if(e.key === 'ArrowDown'){ e.preventDefault(); setActive((activeIndex+1) % items.length); }
+    else if(e.key === 'ArrowUp'){ e.preventDefault(); setActive((activeIndex-1+items.length)%items.length); }
+    else if(e.key === 'Enter'){ e.preventDefault(); if(activeIndex>=0) items[activeIndex].click(); }
+    else if(e.key === 'Escape'){ hideSuggest(); }
+  });
+
+  // 候補取得
+  function fetchPredictions(query){
+    autocompleteService.getPlacePredictions(
+      {
+        input: query,
+        componentRestrictions: { country: ['jp'] }, // 日本優先（必要に応じ調整）
+        types: ['geocode','establishment']
+      },
+      (preds, status) => {
+        if(status !== google.maps.places.PlacesServiceStatus.OK || !preds || preds.length === 0){
+          hideSuggest(); return;
         }
-        if (marker) marker.setMap(null);
-        marker = new google.maps.Marker({
-          position: place.geometry.location,
-          map: map,
-          title: place.name,
-        });
-        map.setCenter(place.geometry.location);
-        map.setZoom(15);
-      });
-    };
-
-    // 現在地ボタン
-    document.getElementById("locateBtn").addEventListener("click", () => {
-      if (!navigator.geolocation) {
-        alert("このブラウザは現在地に対応していません。");
-        return;
+        renderList(preds.slice(0,5));
       }
-      navigator.geolocation.getCurrentPosition(
-        pos => {
-          const { latitude, longitude } = pos.coords;
-          const myLatLng = { lat: latitude, lng: longitude };
-          map.setCenter(myLatLng);
-          map.setZoom(15);
-          if (marker) marker.setMap(null);
-          marker = new google.maps.Marker({
-            position: myLatLng,
-            map: map,
-            title: "現在地",
-          });
-        },
-        () => alert("現在地を取得できませんでした。"),
-        { enableHighAccuracy: true }
-      );
-    });
-  </script>
+    );
+  }
 
-  <!-- Google Maps API（Places含む） -->
-  <script async src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBlN9ik-Y3CpEy3Uw9hXfBq0m2AoZWx_oM&callback=initMap&libraries=places"></script>
+  function renderList(preds){
+    list.innerHTML = '';
+    activeIndex = -1;
+    preds.forEach((p, idx) => {
+      const li = document.createElement('li');
+      li.innerHTML = `
+        <img class="pin" src="https://img.icons8.com/ios-filled/50/marker.png" alt="">
+        <div>
+          <div class="primary-text">${escapeHtml(p.structured_formatting.main_text || p.description)}</div>
+          <div class="secondary-text">${escapeHtml(p.structured_formatting.secondary_text || '')}</div>
+        </div>`;
+      li.addEventListener('click', () => choosePrediction(p));
+      list.appendChild(li);
+      // hoverでアクティブに
+      li.addEventListener('mouseenter', ()=> setActive(idx));
+    });
+    box.classList.remove('hidden');
+  }
+
+  function setActive(index){
+    const items = list.querySelectorAll('li');
+    items.forEach(el => el.classList.remove('active'));
+    activeIndex = index;
+    if(index>=0 && items[index]) items[index].classList.add('active');
+  }
+
+  function hideSuggest(){ box.classList.add('hidden'); list.innerHTML=''; activeIndex=-1; }
+
+  function choosePrediction(pred){
+    // placeIdから詳細を取得→地図移動＆ピン
+    placesService.getDetails({ placeId: pred.place_id }, (place, status) => {
+      if(status !== google.maps.places.PlacesServiceStatus.OK || !place || !place.geometry){
+        alert('場所の詳細を取得できませんでした。'); return;
+      }
+      input.value = place.name || pred.description;
+      hideSuggest();
+      setMarker(place.geometry.location, place.name);
+    });
+  }
+}
+
+// マーカー設置＆移動
+function setMarker(latlng, title){
+  if(marker) marker.setMap(null);
+  marker = new google.maps.Marker({ position: latlng, map, title: title || '目的地' });
+  map.panTo(latlng);
+  map.setZoom(15);
+}
+
+// 現在地ボタン
+function setupLocate(){
+  const btn = document.getElementById('locateBtn');
+  btn.addEventListener('click', () => {
+    if(!navigator.geolocation){ alert('現在地に対応していません。'); return; }
+    navigator.geolocation.getCurrentPosition(
+      pos => {
+        const me = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+        setMarker(me, '現在地');
+      },
+      () => alert('現在地を取得できませんでした。'),
+      { enableHighAccuracy: true, timeout: 10000 }
+    );
+  });
+}
+
+// XSSガード
+function escapeHtml(s){ return String(s||'').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
+</script>
+
+<!-- Placesライブラリ必須 -->
+<script async src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBlN9ik-Y3CpEy3Uw9hXfBq0m2AoZWx_oM&callback=initMap&libraries=places"></script>
 </body>
 </html>
