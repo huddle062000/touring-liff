@@ -14,81 +14,233 @@
 
     .panel { padding: 12px 16px; background:#fff; }
     input, select { padding: 8px; width: 100%; margin-bottom: 8px; border: 1px solid #ccc; border-radius: 6px; }
-    button { padding: 10px; font-size: 16px; border: none; background:#06c755; color:white; border-radius:6px; cursor:pointer; }
+    button { padding: 10px; font-size: 16px; border: none; border-radius: 8px; background: #06c755; color: white; width: 100%; cursor: pointer; }
+    button:disabled { opacity: 0.5; cursor: default; }
+    label.chk { display:flex; gap:6px; align-items:center; margin-right:12px; }
+
+    body.fullmap header, body.fullmap #controls { display: none; }
+    body.fullmap #map { height: 100vh !important; }
+
+    #back { position: fixed; top: 10px; left: 10px; z-index: 1000; background: #06c755; color: #fff; border: none; border-radius: 8px; padding: 8px 12px; display: none; }
+    body.fullmap #back { display: inline-block; }
+
+    #fab {
+      position: fixed; right: 12px; bottom: 16px; z-index: 1001;
+      gap: 8px; display: none; flex-direction: column; align-items: end;
+    }
+    #fab button {
+      padding: 10px 14px; border: none; border-radius: 20px; background: #06c755; color: #fff;
+      font-size: 14px; box-shadow: 0 2px 8px rgba(0,0,0,.2); white-space: nowrap; width: auto; cursor: pointer;
+    }
+    body.fullmap #fab { display: flex; }
+
+    #jumpCtl { position: fixed; right: 12px; bottom: 16px; z-index: 1000;
+      padding: 10px 14px; border: none; border-radius: 20px; background: #06c755; color:#fff; font-size: 14px; box-shadow:0 2px 8px rgba(0,0,0,.2); }
+    body.fullmap #jumpCtl { display:none; }
+
+    /* 休憩スポット ドロワー */
+    #stopsDrawer {
+      position: fixed; right: 12px; top: 12px; z-index: 1001;
+      background: rgba(255,255,255,0.98); border-radius: 12px; box-shadow: 0 2px 10px rgba(0,0,0,.2);
+      width: min(360px, 92vw); max-height: 72vh; display: none; flex-direction: column;
+    }
+    #stopsDrawer header { display:flex; justify-content: space-between; align-items:center; padding:10px 12px; border-bottom:1px solid #eee; }
+    #stopsList { overflow:auto; max-height: 54vh; padding: 8px 10px; }
+    .stopItem { border: 1px solid #eee; border-radius: 10px; padding: 8px 10px; margin-bottom: 8px; cursor: pointer; }
+    .stopItem:hover { background: #fafafa; }
+    .meta { color:#666; font-size:12px; display:flex; gap:8px; flex-wrap:wrap; }
+    .controls { padding:10px 12px; display:flex; gap:10px; align-items:center; border-bottom:1px solid #eee; flex-wrap:wrap; }
+    .controls .group { display:flex; gap:10px; flex-wrap:wrap; align-items:center; }
+    .badge { background:#06c755; color:#fff; border-radius:12px; padding:2px 8px; font-size:12px; }
+
+    /* エラーバナー */
+    #errBanner {
+      position: fixed; left: 12px; top: 12px; z-index: 2000;
+      background: #ffefef; color:#900; border:1px solid #f5b5b5; padding:8px 12px; border-radius:8px; display:none;
+      box-shadow: 0 2px 8px rgba(0,0,0,.15);
+    }
+
+    /* RainViewerコントローラ */
+    #rvCtl {
+      position: fixed; left: 12px; bottom: 12px; z-index: 1002;
+      background: rgba(255,255,255,0.96); border:1px solid #eee; border-radius: 12px;
+      box-shadow: 0 4px 14px rgba(0,0,0,.2); padding: 10px 12px; display: none; min-width: 220px;
+      font-size: 13px; color:#333;
+    }
+    #rvCtl header { font-weight:700; margin-bottom:6px; display:flex; align-items:center; gap:8px; }
+    #rvCtl .row { display:flex; gap:8px; align-items:center; margin-top:6px; flex-wrap:wrap; }
+    #rvCtl button.small { background:#06c755; padding:6px 10px; border-radius: 8px; font-size:13px; }
+    #rvCtl input[type="range"] { width: 120px; }
+    #rvCtl .stamp { color:#666; font-size:12px; }
   </style>
 </head>
 <body>
-  <header>
-    <h1>ライドツーリングツール</h1>
-  </header>
-
+  <header><h1>ライドツーリングツール</h1></header>
+  <div id="errBanner"></div>
+  <button id="jumpCtl" type="button">操作パネル</button>
   <div id="map"></div>
 
-  <div class="panel">
-    <input id="start" type="text" placeholder="出発地を入力" />
-    <input id="end" type="text" placeholder="目的地を入力" />
-    <select id="travelMode">
-      <option value="DRIVING">車・バイク</option>
-      <option value="WALKING">徒歩</option>
-    </select>
-    <button id="routeBtn">ルートを作る</button>
+  <div id="controls" class="panel">
+    <div style="display:flex; gap:8px; align-items:center;">
+      <input id="start" placeholder="出発地を入力（例：京都駅）" style="flex:1">
+      <button type="button" id="btn-loc" style="width:auto; white-space:nowrap;">現在地</button>
+    </div>
+    <input id="end" placeholder="目的地を入力（例：美山 かやぶきの里）">
+    <div style="display:flex; gap:12px; align-items:center; margin:6px 0 10px; flex-wrap:wrap;">
+      <label class="chk"><input type="checkbox" id="opt-avoid-highways"> 高速を使わない</label>
+      <label class="chk"><input type="checkbox" id="opt-avoid-tolls"> 有料道路を使わない</label>
+    </div>
+    <button id="makeRoute">ルートを作る</button>
+    <button id="shareBtn" disabled>LINEで共有</button>
+    <button id="navBtn" disabled>Googleナビで開く</button>
+    <button id="stopsBtn" disabled>休憩スポット提案</button>
+    <button id="rainToggleBtn" type="button">雨雲（マップに重ねる）</button>
   </div>
 
+  <div id="summaryPanel" class="panel">
+    <div id="summary" style="font-size:14px;line-height:1.6;color:#333">距離と時間はここに表示されます。</div>
+  </div>
+
+  <button id="back" type="button">戻る</button>
+  <div id="fab">
+    <button id="navBtnFab" disabled>Googleナビ開始</button>
+    <button id="shareBtnFab" disabled>LINEで共有</button>
+    <button id="stopsBtnFab" disabled>休憩スポット提案</button>
+    <button id="rainToggleBtnFab" type="button">雨雲レイヤー</button>
+  </div>
+
+  <div id="rvCtl">
+    <header>雨雲レーダー <span class="stamp" id="rvStamp">--:--</span></header>
+    <div class="row">
+      <button id="rvPlay" class="small">▶︎ 再生</button>
+      <button id="rvPrev" class="small">◀︎</button>
+      <button id="rvNext" class="small">▶︎</button>
+      <button id="rvOff"  class="small" style="background:#999">OFF</button>
+    </div>
+    <div class="row">
+      透明度 <input id="rvOpacity" type="range" min="20" max="100" value="60">
+      <span id="rvOpacityVal">60%</span>
+    </div>
+  </div>
+
+  <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBlN9ik-Y3CpEy3Uw9hXfBq0m2AoZWx_oM&libraries=places&language=ja&region=JP&callback=initMap" async defer></script>
+
   <script>
-  let map, directionsService, directionsRenderer;
-  let radarLayer;
+    let map, radarTimestamps = [], radarIndex = 0, radarTimer = null, radarLayer = null, radarOpacity = 0.6;
 
-  function initMap() {
-    map = new google.maps.Map(document.getElementById("map"), {
-      center: { lat: 35.0116, lng: 135.7681 }, // 京都
-      zoom: 8
+    function initMap() {
+      map = new google.maps.Map(document.getElementById('map'), {
+        center: { lat: 35.0116, lng: 135.7681 }, zoom: 8
+      });
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      document.getElementById('rainToggleBtn').addEventListener('click', toggleRadar);
+      document.getElementById('rainToggleBtnFab').addEventListener('click', toggleRadar);
+      document.getElementById('rvPlay').addEventListener('click', (e)=>togglePlay(e.currentTarget));
+      document.getElementById('rvPrev').addEventListener('click', ()=>stepFrame(-1));
+      document.getElementById('rvNext').addEventListener('click', ()=>stepFrame(1));
+      document.getElementById('rvOff').addEventListener('click', turnRadarOff);
+      document.getElementById('rvOpacity').addEventListener('input',(e)=>{
+        const v=Number(e.target.value);
+        document.getElementById('rvOpacityVal').textContent=v+'%';
+        radarOpacity=v/100; 
+        if(radarLayer) rebuildCurrentRadarLayer();
+      });
     });
 
-    directionsService = new google.maps.DirectionsService();
-    directionsRenderer = new google.maps.DirectionsRenderer();
-    directionsRenderer.setMap(map);
+    async function toggleRadar() {
+      const ctl=document.getElementById('rvCtl');
+      if(radarLayer){ turnRadarOff(); return; }
 
-    // 雨雲レーダー追加部分（RainViewerやJMAタイルなど）
-    radarLayer = new google.maps.ImageMapType({
-      getTileUrl: function(coord, zoom) {
-        // タイルURL（例：RainViewerのAPIなどを使用）
-        // 実際のURLに置き換えてください
-        return `https://tilecache.rainviewer.com/v2/radar/now/256/${zoom}/${coord.x}/${coord.y}/2/1_1.png`;
-      },
-      tileSize: new google.maps.Size(256, 256),
-      opacity: 0.6,
-      name: "Rain radar"
-    });
-    map.overlayMapTypes.insertAt(0, radarLayer);
+      try {
+        const res=await fetch('https://api.rainviewer.com/public/weather-maps.json');
+        const data=await res.json();
+        radarTimestamps=[...(data?.radar?.past||[]).map(f=>f.time),...(data?.radar?.nowcast||[]).map(f=>f.time)];
+        if(!radarTimestamps.length){ alert('雨雲データ取得失敗'); return; }
+        radarIndex=radarTimestamps.length-1;
+        fadeToFrame(radarIndex,true);
+        ctl.style.display='block';
+      } catch(e){ alert('雨雲データ取得エラー'); console.error(e); }
+    }
 
-    document.getElementById("routeBtn").addEventListener("click", () => {
-      const start = document.getElementById("start").value;
-      const end = document.getElementById("end").value;
-      const mode = document.getElementById("travelMode").value;
-      if (!start || !end) {
-        alert("出発地と目的地を入力してください");
-        return;
-      }
-      directionsService.route(
-        {
-          origin: start,
-          destination: end,
-          travelMode: google.maps.TravelMode[mode],
+    function turnRadarOff() {
+      stopAnimation();
+      map.overlayMapTypes.clear();
+      radarLayer=null;
+      document.getElementById('rvCtl').style.display='none';
+    }
+
+    function tileUrl(ts) { return `https://tilecache.rainviewer.com/v2/radar/${ts}/256/{z}/{x}/{y}/2/1_1.png`; }
+
+    function buildLayer(ts,opacity) {
+      const t=tileUrl(ts);
+      return new google.maps.ImageMapType({
+        getTileUrl:(coord,zoom)=>{
+          const n=1<<zoom; let x=coord.x%n; if(x<0)x+=n;
+          return t.replace('{z}',zoom).replace('{x}',x).replace('{y}',coord.y);
         },
-        (response, status) => {
-          if (status === "OK") {
-            directionsRenderer.setDirections(response);
-          } else {
-            alert("ルートを取得できませんでした: " + status);
+        tileSize:new google.maps.Size(256,256),
+        opacity:opacity
+      });
+    }
+
+    function fadeToFrame(i,instant=false){
+      if(!radarTimestamps.length) return;
+      const ts=radarTimestamps[i];
+      const newLayer=buildLayer(ts,0);
+      map.overlayMapTypes.insertAt(0,newLayer);
+
+      const d=new Date(ts*1000);
+      document.getElementById('rvStamp').textContent=
+        d.toLocaleString('ja-JP',{month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'});
+
+      const oldLayer=radarLayer;
+      radarLayer=newLayer;
+
+      if(instant){ radarLayer.setOpacity(radarOpacity); if(oldLayer) map.overlayMapTypes.removeAt(1); return; }
+
+      let alpha=0;
+      const fadeTimer=setInterval(()=>{
+        alpha+=0.1;
+        radarLayer.setOpacity(radarOpacity*alpha);
+        if(oldLayer) oldLayer.setOpacity(radarOpacity*(1-alpha));
+        if(alpha>=1){
+          clearInterval(fadeTimer);
+          radarLayer.setOpacity(radarOpacity);
+          if(oldLayer){
+            const arr=map.overlayMapTypes.getArray();
+            const idx=arr.indexOf(oldLayer);
+            if(idx>=0) map.overlayMapTypes.removeAt(idx);
           }
         }
-      );
-    });
-  }
-  </script>
+      },50); // ← 50msごと（約20fps）で滑らかフェード
+    }
 
-  <script async
-    src="https://maps.googleapis.com/maps/api/js?key=YOUR_GOOGLE_MAPS_API_KEY&callback=initMap">
+    function rebuildCurrentRadarLayer(){ if(radarLayer) fadeToFrame(radarIndex,true); }
+
+    function stepFrame(dir){
+      if(!radarTimestamps.length) return;
+      radarIndex=(radarIndex+dir+radarTimestamps.length)%radarTimestamps.length;
+      fadeToFrame(radarIndex);
+    }
+
+    function togglePlay(btn){
+      if(radarTimer){
+        clearInterval(radarTimer);
+        radarTimer=null;
+        btn.textContent='▶︎ 再生';
+        return;
+      }
+      btn.textContent='⏸ 一時停止';
+      radarTimer=setInterval(()=>stepFrame(1),400); // ← 400msでスムーズ再生
+    }
+
+    function stopAnimation(){
+      if(radarTimer){ clearInterval(radarTimer); radarTimer=null; }
+      const btn=document.getElementById('rvPlay');
+      if(btn) btn.textContent='▶︎ 再生';
+    }
   </script>
 </body>
 </html>
