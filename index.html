@@ -2,62 +2,28 @@
 <html lang="ja">
 <head>
 <meta charset="utf-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>ライドツーリングツール</title>
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Map Test</title>
 <style>
-  html, body { height:100%; margin:0; font-family:"Roboto","Noto Sans JP",sans-serif; overflow:hidden; }
-  /* 地図を常時全画面 */
-  #map { position:absolute; inset:0; width:100%; height:100vh; z-index:1; }
-
-  /* 検索バー */
-  .search-wrap{
-    position:absolute; top:12px; left:50%; transform:translateX(-50%);
-    width:92%; max-width:420px; z-index:9999; /* ← かなり前面に */
+  html,body{height:100%;margin:0}
+  /* これで高さゼロ問題を完全回避 */
+  #map{
+    position:fixed; inset:0;       /* 画面全面に固定 */
+    width:100%; height:100vh;      /* 念のため両方指定 */
+    z-index:1; background:#eaeaea; /* ロード前に灰色で確認できる */
   }
-  .search-container{
-    display:flex; align-items:center; gap:8px;
-    background:#fff; border-radius:30px; padding:6px 12px;
-    box-shadow:0 2px 6px rgba(0,0,0,.25);
-  }
-  .search-container img.logo{ width:28px; height:28px; }
-  #destInput{ flex:1; border:none; outline:none; font-size:16px; color:#333; background:transparent; }
-
-  /* 候補ドロップダウン */
-  .suggest{
-    margin-top:6px; background:#fff; border-radius:14px; overflow:hidden;
-    box-shadow:0 6px 16px rgba(0,0,0,.25);
-  }
-  .hidden{ display:none; }
-  .suggest ul{ list-style:none; margin:0; padding:6px 0; max-height:260px; overflow:auto; }
-  .suggest li{
-    display:flex; align-items:flex-start; gap:10px; padding:10px 14px; cursor:pointer;
-  }
-  .suggest li:hover, .suggest li.active{ background:#f5f7f9; }
-  .pin{ width:18px; margin-top:2px; opacity:.85; }
-  .primary-text{ font-size:15px; color:#111; }
-  .secondary-text{ font-size:12px; color:#666; margin-top:2px; }
-
-  /* 現在地ボタン */
-  #locateBtn{
-    position:absolute; right:16px; bottom:100px; width:56px; height:56px; z-index:5;
-    border:none; border-radius:50%; background:#fff; box-shadow:0 2px 8px rgba(0,0,0,.3); cursor:pointer;
-  }
-  #locateBtn img{ width:26px; height:26px; }
 </style>
 </head>
 <body>
-  <!-- 検索UI -->
-  <div class="search-wrap">
-    <div class="search-container">
-      <img class="logo" src="https://upload.wikimedia.org/wikipedia/commons/e/e7/Google_Maps_icon_%282020%29.svg" alt="">
-      <input id="destInput" type="text" placeholder="目的地" autocomplete="off">
-    </div>
-    <div id="suggestBox" class="suggest hidden"><ul id="suggestList"></ul></div>
-  </div>
-
-  <!-- 地図 -->
-  <div id="map"></div>
-
-  <!-- 現在地ボタン -->
-  <button id="locateBtn" title="現在地へ移動">
-    <img src="https://img.icons8.com/ios-filled/5
+<div id="map"></div>
+<script>
+  window.initMap = function(){
+    new google.maps.Map(document.getElementById('map'),{
+      center:{lat:35.0116,lng:135.7681}, zoom:12,
+      mapTypeControl:false, streetViewControl:false, fullscreenControl:false
+    });
+  };
+</script>
+<script async src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBlN9ik-Y3CpEy3Uw9hXfBq0m2AoZWx_oM&callback=initMap"></script>
+</body>
+</html>
