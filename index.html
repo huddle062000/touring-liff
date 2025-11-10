@@ -3,164 +3,194 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>ライドツーリングツール（Googleマップ風）</title>
+<title>ライドツーリングツール（候補：名称のみ／バイクアイコン）</title>
 <style>
-  html, body {
-    height: 100%;
-    margin: 0;
-    font-family: system-ui, "Noto Sans JP", sans-serif;
-    overflow: visible !important;
-  }
+  html, body { height:100%; margin:0; font-family:system-ui,"Noto Sans JP",sans-serif; overflow:visible !important; }
 
   /* 地図全画面 */
-  #map {
-    position: fixed;
-    inset: 0;
-    width: 100%;
-    height: 100vh;
-    z-index: 1;
-    overflow: visible !important;
-  }
+  #map { position:fixed; inset:0; width:100%; height:100vh; z-index:1; }
 
-  /* 検索バー */
-  .search-wrap {
-    position: fixed;
-    top: 12px;
-    left: 50%;
-    transform: translateX(-50%);
-    width: 92%;
-    max-width: 420px;
-    z-index: 9999;
+  /* 検索UI */
+  .search-wrap{ position:fixed; top:12px; left:50%; transform:translateX(-50%); width:92%; max-width:420px; z-index:9999; }
+  .search-box{
+    display:flex; align-items:center; gap:10px;
+    background:#fff; border-radius:30px; padding:8px 12px;
+    box-shadow:0 2px 6px rgba(0,0,0,.25);
   }
+  .logo-bike{ width:26px; height:26px; flex:0 0 auto; }
+  #destInput{ flex:1; border:none; outline:none; background:transparent; font-size:16px; color:#333; }
 
-  .search-box {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    background: #fff;
-    border-radius: 30px;
-    padding: 6px 12px;
-    box-shadow: 0 2px 6px rgba(0,0,0,0.25);
-  }
-
-  .search-box img.logo {
-    width: 28px;
-    height: 28px;
-  }
-
-  #destInput {
-    flex: 1;
-    border: none;
-    outline: none;
-    background: transparent;
-    font-size: 16px;
-    color: #333;
-  }
+  /* 候補ドロップダウン（名称のみ表示） */
+  .suggest{ margin-top:6px; background:#fff; border-radius:14px; overflow:hidden; box-shadow:0 6px 16px rgba(0,0,0,.25); }
+  .hidden{ display:none; }
+  .suggest ul{ list-style:none; margin:0; padding:6px 0; max-height:260px; overflow:auto; }
+  .suggest li{ display:flex; align-items:center; gap:10px; padding:10px 14px; cursor:pointer; }
+  .suggest li:hover, .suggest li.active{ background:#f5f7f9; }
+  .pin{ width:16px; opacity:.85; }
+  .name{ font-size:15px; color:#111; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 
   /* 現在地ボタン */
-  #locateBtn {
-    position: fixed;
-    right: 16px;
-    bottom: 100px;
-    width: 56px;
-    height: 56px;
-    border: none;
-    border-radius: 50%;
-    background: #fff;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.3);
-    cursor: pointer;
-    z-index: 5;
+  #locateBtn{
+    position:fixed; right:16px; bottom:100px; width:56px; height:56px;
+    border:none; border-radius:50%; background:#fff; box-shadow:0 2px 8px rgba(0,0,0,.3);
+    cursor:pointer; z-index:5;
   }
-
-  #locateBtn img {
-    width: 26px;
-    height: 26px;
-  }
+  #locateBtn svg{ width:26px; height:26px; }
 </style>
 </head>
 <body>
 
-<!-- 検索バー -->
+<!-- 検索バー（バイクアイコンはインラインSVG） -->
 <div class="search-wrap">
   <div class="search-box">
-    <img class="logo" src="https://upload.wikimedia.org/wikipedia/commons/e/e7/Google_Maps_icon_%282020%29.svg" alt="">
+    <svg class="logo-bike" viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M5 17a4 4 0 1 1 3.9-5h2.2l-1.2-2.5h-2V7h3.3l1.6 3.3h3.2l-1-1.6 1.7-1.1 2.2 3.5H20a4 4 0 1 1-3.9 5h-2.2l.8-2h2a4 4 0 0 1-1.6-2H9.9A4 4 0 0 1 5 17Zm0-2a2 2 0 1 0 0-4 2 2 0 0 0 0 4Zm14 2a2 2 0 1 0 0-4 2 2 0 0 0 0 4Z"/>
+    </svg>
     <input id="destInput" type="text" placeholder="目的地" autocomplete="off">
   </div>
+  <div id="suggestBox" class="suggest hidden"><ul id="suggestList"></ul></div>
 </div>
 
 <!-- 地図 -->
 <div id="map"></div>
 
-<!-- 現在地ボタン -->
+<!-- 現在地ボタン（インラインSVGで安定） -->
 <button id="locateBtn" title="現在地へ移動">
-  <img src="https://img.icons8.com/ios-filled/50/000000/near-me.png" alt="">
+  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2l3 7 7 3-7 3-3 7-3-7-7-3 7-3 3-7z"/></svg>
 </button>
 
 <script>
-let map, marker, autocomplete;
+let map, marker;
+let placesService, autocompleteService, sessionToken;
+let activeIndex = -1;
 
 window.initMap = function(){
-  // 地図の初期化
   map = new google.maps.Map(document.getElementById("map"), {
-    center: { lat: 35.0116, lng: 135.7681 },
-    zoom: 13,
-    mapTypeControl: false,
-    streetViewControl: false,
-    fullscreenControl: false
+    center:{lat:35.0116,lng:135.7681}, zoom:13,
+    mapTypeControl:false, streetViewControl:false, fullscreenControl:false
   });
+  placesService = new google.maps.places.PlacesService(map);
+  autocompleteService = new google.maps.places.AutocompleteService();
+  sessionToken = new google.maps.places.AutocompleteSessionToken();
 
-  // Googleオートコンプリート設定（住所を非表示）
-  const input = document.getElementById("destInput");
-  autocomplete = new google.maps.places.Autocomplete(input, {
-    fields: ["geometry", "name"], // ✅ 住所を取得しない
-    types: ["establishment", "point_of_interest", "geocode"], // ✅ 候補を施設名・地名に限定
-  });
-  autocomplete.bindTo("bounds", map);
-
-  // 候補から場所を選んだ時
-  autocomplete.addListener("place_changed", () => {
-    const place = autocomplete.getPlace();
-    if (!place || !place.geometry) {
-      alert("場所が見つかりませんでした。別のキーワードで試してください。");
-      return;
-    }
-    dropPin(place.geometry.location, place.name);
-  });
-
-  // 現在地ボタン
-  document.getElementById("locateBtn").addEventListener("click", () => {
-    if (!navigator.geolocation) {
-      alert("この端末は現在地取得に対応していません。");
-      return;
-    }
-    navigator.geolocation.getCurrentPosition(
-      pos => {
-        const me = { lat: pos.coords.latitude, lng: pos.coords.longitude };
-        dropPin(me, "現在地");
-      },
-      () => alert("現在地を取得できませんでした。位置情報の許可をご確認ください。"),
-      { enableHighAccuracy: true, timeout: 10000 }
-    );
-  });
+  setupSearch();
+  setupLocate();
 };
 
-// ピンを立てる処理
-function dropPin(latlng, title){
-  if (marker) marker.setMap(null);
-  marker = new google.maps.Marker({
-    map,
-    position: latlng,
-    title: title || "目的地"
+/* 検索：名称だけの候補を自前描画（住所は表示しない） */
+function setupSearch(){
+  const input = document.getElementById('destInput');
+  const box   = document.getElementById('suggestBox');
+  const list  = document.getElementById('suggestList');
+
+  let timer=null;
+  input.addEventListener('input', ()=>{
+    const q = input.value.trim();
+    clearTimeout(timer);
+    if(!q){ hide(); return; }
+    timer = setTimeout(()=>fetchPredictions(q), 140);
   });
-  map.panTo(latlng);
-  map.setZoom(15);
+
+  input.addEventListener('keydown', (e)=>{
+    const items = list.querySelectorAll('li');
+    if(box.classList.contains('hidden') || items.length===0) return;
+    if(e.key==='ArrowDown'){ e.preventDefault(); setActive((activeIndex+1)%items.length); }
+    else if(e.key==='ArrowUp'){ e.preventDefault(); setActive((activeIndex-1+items.length)%items.length); }
+    else if(e.key==='Enter'){ e.preventDefault(); if(activeIndex>=0) items[activeIndex].click(); }
+    else if(e.key==='Escape'){ hide(); }
+  });
+
+  function fetchPredictions(query){
+    autocompleteService.getPlacePredictions(
+      { input: query, sessionToken },
+      (preds, status)=>{
+        if(status!==google.maps.places.PlacesServiceStatus.OK || !preds?.length){ hide(); return; }
+        render(preds.slice(0,8));
+      }
+    );
+  }
+
+  function render(preds){
+    list.innerHTML=''; activeIndex=-1;
+    preds.forEach((p, idx)=>{
+      const name = p.structured_formatting?.main_text || p.description || '';
+      const li = document.createElement('li');
+      li.innerHTML = `
+        <img class="pin" src="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24'><path d='M12 2C8.7 2 6 4.7 6 8c0 5 6 12 6 12s6-7 6-12c0-3.3-2.7-6-6-6zm0 8.5c-1.4 0-2.5-1.1-2.5-2.5S10.6 5.5 12 5.5s2.5 1.1 2.5 2.5S13.4 10.5 12 10.5z'/></svg>"/>
+        <div class="name" title="${escapeHtml(name)}">${escapeHtml(name)}</div>`;
+      li.addEventListener('click', ()=> choose(p, name));
+      li.addEventListener('mouseenter', ()=> setActive(idx));
+      list.appendChild(li);
+    });
+    box.classList.remove('hidden');
+  }
+
+  function setActive(i){
+    list.querySelectorAll('li').forEach(el=>el.classList.remove('active'));
+    activeIndex = i;
+    const item = list.querySelectorAll('li')[i];
+    if(item) item.classList.add('active');
+  }
+
+  function hide(){ box.classList.add('hidden'); list.innerHTML=''; activeIndex=-1; }
+
+  function choose(pred, shownName){
+    input.value = shownName || input.value;
+    hide();
+    if(pred.place_id){
+      placesService.getDetails(
+        { placeId: pred.place_id, fields:['geometry','name'] },
+        (place, status)=>{
+          if(status===google.maps.places.PlacesServiceStatus.OK && place?.geometry){
+            dropPin(place.geometry.location, place.name || shownName || '目的地');
+            sessionToken = new google.maps.places.AutocompleteSessionToken(); // 次回に更新
+          }else{
+            textSearchFallback(shownName || pred.description || input.value);
+          }
+        }
+      );
+    }else{
+      textSearchFallback(shownName || pred.description || input.value);
+    }
+  }
 }
+
+/* 予備：TextSearch（古いブラウザやgeometry未返却時の保険） */
+function textSearchFallback(query){
+  placesService.textSearch({ query }, (results, status)=>{
+    if(status===google.maps.places.PlacesServiceStatus.OK && results?.[0]?.geometry){
+      const r = results[0];
+      dropPin(r.geometry.location, r.name || '目的地');
+    }else{
+      alert('場所が見つかりませんでした。別のキーワードでお試しください。');
+    }
+  });
+}
+
+/* ピン設置 */
+function dropPin(latlng, title){
+  if(marker) marker.setMap(null);
+  marker = new google.maps.Marker({ map, position: latlng, title: title||'目的地' });
+  map.panTo(latlng); map.setZoom(15);
+}
+
+/* 現在地ボタン */
+function setupLocate(){
+  document.getElementById('locateBtn').addEventListener('click', ()=>{
+    if(!navigator.geolocation){ alert('この端末は現在地取得に対応していません。'); return; }
+    navigator.geolocation.getCurrentPosition(
+      pos => dropPin({lat:pos.coords.latitude, lng:pos.coords.longitude}, '現在地'),
+      ()=> alert('現在地を取得できませんでした。位置情報の許可をご確認ください。'),
+      { enableHighAccuracy:true, timeout:10000 }
+    );
+  });
+}
+
+/* XSSガード */
+function escapeHtml(s){ return String(s||'').replace(/[&<>"']/g, m=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[m])); }
 </script>
 
-<!-- Google Maps API（Placesライブラリ必須） -->
-<script async
-  src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBlN9ik-Y3CpEy3Uw9hXfBq0m2AoZWx_oM&callback=initMap&libraries=places">
-</script>
-
+<!-- Google Maps（Places ライブラリ必須） -->
+<script async src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBlN9ik-Y3CpEy3Uw9hXfBq0m2AoZWx_oM&callback=initMap&libraries=places"></script>
 </body>
 </html>
