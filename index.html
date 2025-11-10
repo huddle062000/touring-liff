@@ -4,91 +4,182 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>ライドツーリングツール（LINE × Google Maps）</title>
-  <style>
-    html, body { height: 100%; margin: 0; font-family: system-ui, sans-serif; }
-    header { padding: 10px 16px; background: #06c755; color: #fff; display:flex; align-items:center; justify-content:space-between; }
-    h1 { font-size: 16px; margin: 0; }
 
-    /* サブメニュー開閉ボタン（左上） */
-    .menu-toggle {
-      appearance: none; border: none; background: #fff; color:#06c755;
-      width: 36px; height: 36px; border-radius: 10px; font-size: 18px; font-weight: 800;
+  <style>
+    html, body {
+      height: 100%;
+      margin: 0;
+      font-family: system-ui, sans-serif;
+      overflow: hidden; /* スクロール禁止で地図全画面 */
+    }
+
+    /* ===== 地図 ===== */
+    #map {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100vh;
+      z-index: 1;
+    }
+
+    /* ===== オーバーレイフォーム ===== */
+    .panel {
+      position: absolute;
+      top: 10px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(255, 255, 255, 0.95);
+      width: 90%;
+      max-width: 600px;
+      border-radius: 12px;
+      padding: 16px;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.25);
+      z-index: 10;
+    }
+
+    label { font-size: 14px; color: #333; }
+
+    .field {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      margin-bottom: 10px;
+    }
+
+    .input-wrap {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+
+    .input-wrap input {
+      flex: 1 1 200px;
+      min-width: 0;
+      padding: 10px;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+    }
+
+    .btn-row {
+      display: flex;
+      gap: 8px;
+    }
+
+    button.sub {
+      padding: 9px 12px;
+      border: 1px solid #ddd;
+      background: #f7f7f7;
+      border-radius: 8px;
+      font-size: 14px;
       cursor: pointer;
     }
 
-    /* 地図エリア */
-    #map { width: 100%; height: 60vh; }
-    @media (min-width: 769px){ #map { height: 65vh; } }
-
-    /* 入力パネル */
-    .panel { padding: 12px 16px; background:#fff; }
-    .form-grid { display:grid; gap:12px; grid-template-columns: 1fr 1fr; }
-    @media (max-width: 768px){ .form-grid { grid-template-columns:1fr; } }
-
-    .field { display:flex; flex-direction:column; gap:6px; }
-    label { font-size: 14px; color:#333; }
-    .input-wrap { display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
-    .input-wrap input {
-      flex:1 1 220px; min-width:0; padding:10px; border:1px solid #ccc; border-radius:8px;
-    }
-    .btn-row { display:flex; gap:8px; flex:0 0 auto; }
-    button.sub {
-      padding:9px 12px; border:1px solid #ddd; background:#f7f7f7; border-radius:8px;
-      font-size:14px; cursor:pointer;
-    }
-    button.sub:hover { background:#eaeaea; }
+    button.sub:hover { background: #eaeaea; }
 
     .primary {
-      width:100%; margin-top:10px; padding:12px 16px; background:#06c755; color:#fff;
-      border:none; border-radius:10px; font-size:16px; font-weight:600; cursor:pointer;
+      width: 100%;
+      margin-top: 6px;
+      padding: 12px 16px;
+      background: #06c755;
+      color: #fff;
+      border: none;
+      border-radius: 10px;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
     }
-    .primary:hover { background:#05b14b; }
 
-    /* 共有ボタン */
-    .share-row { margin-top:10px; display:flex; gap:8px; }
-    .share { padding:10px 12px; border:1px solid #ddd; background:#fff; border-radius:10px; cursor:pointer; }
-    .share.line { border-color:#06c755; color:#06c755; font-weight:600; }
+    .primary:hover { background: #05b14b; }
 
-    /* サブメニュー（左からスライド） */
+    /* ===== サブメニュー（スライド） ===== */
+    .menu-toggle {
+      position: absolute;
+      top: 15px;
+      left: 15px;
+      z-index: 20;
+      appearance: none;
+      border: none;
+      background: #06c755;
+      color: #fff;
+      width: 38px;
+      height: 38px;
+      border-radius: 10px;
+      font-size: 18px;
+      font-weight: bold;
+      cursor: pointer;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+    }
+
     .drawer {
-      position: fixed; top: 0; left: 0; height: 100%; width: 280px; max-width: 85%;
-      background: #ffffff; box-shadow: 2px 0 16px rgba(0,0,0,.15);
-      transform: translateX(-100%); transition: transform .25s ease; z-index: 1000;
-      display:flex; flex-direction:column;
+      position: fixed;
+      top: 0; left: 0;
+      height: 100%;
+      width: 260px;
+      background: #fff;
+      box-shadow: 2px 0 10px rgba(0,0,0,0.2);
+      transform: translateX(-100%);
+      transition: transform 0.25s ease;
+      z-index: 30;
+      display: flex;
+      flex-direction: column;
     }
-    .drawer.open { transform: translateX(0); }
-    .drawer header { background:#06c755; color:#fff; padding:12px 16px; }
-    .drawer .content { padding:14px 16px; display:flex; flex-direction:column; gap:12px; }
-    .opt { display:flex; align-items:center; gap:10px; }
-    .opt input[type="checkbox"] { width:18px; height:18px; }
 
-    /* 背景マスク */
-    .backdrop {
-      position: fixed; inset: 0; background: rgba(0,0,0,.3);
-      opacity: 0; pointer-events: none; transition: opacity .2s ease; z-index: 900;
+    .drawer.open { transform: translateX(0); }
+    .drawer header {
+      background: #06c755;
+      color: #fff;
+      padding: 12px 16px;
+      font-weight: bold;
     }
-    .backdrop.show { opacity: 1; pointer-events: auto; }
+
+    .drawer .content {
+      padding: 14px 16px;
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .opt { display: flex; align-items: center; gap: 8px; }
+
+    .share {
+      padding: 10px 12px;
+      border: 1px solid #06c755;
+      background: #fff;
+      color: #06c755;
+      font-weight: bold;
+      border-radius: 10px;
+      cursor: pointer;
+    }
+
+    .backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.3);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.2s ease;
+      z-index: 25;
+    }
+
+    .backdrop.show {
+      opacity: 1;
+      pointer-events: auto;
+    }
   </style>
 </head>
-<body>
-  <header>
-    <button class="menu-toggle" id="openDrawer" aria-label="メニューを開く">＞</button>
-    <h1>ライドツーリングツール（LINE × Google Maps）</h1>
-    <span></span>
-  </header>
 
-  <!-- サブメニュー（スライド式） -->
+<body>
+  <!-- サブメニュー -->
+  <button class="menu-toggle" id="openDrawer">☰</button>
   <aside class="drawer" id="drawer">
     <header>サブメニュー</header>
     <div class="content">
       <div class="opt"><input type="checkbox" id="chkHighways"><label for="chkHighways">高速道路を使う</label></div>
       <div class="opt"><input type="checkbox" id="chkTolls"><label for="chkTolls">有料道路を使う</label></div>
-      <hr>
-      <button class="share line" id="shareLine">LINEでルートを共有</button>
-      <p style="font-size:12px;color:#666;line-height:1.4;">
-        ※チェックONで「使う」設定。<br>
-        ルート計算時は自動で反映します。
-      </p>
+      <button class="share" id="shareLine">LINEでルート共有</button>
       <button class="sub" id="closeDrawer">閉じる</button>
     </div>
   </aside>
@@ -97,187 +188,159 @@
   <!-- 地図 -->
   <div id="map"></div>
 
-  <!-- 入力フォーム -->
+  <!-- オーバーレイフォーム -->
   <section class="panel">
-    <div class="form-grid">
-      <div class="field">
-        <label for="start">出発地</label>
-        <div class="input-wrap">
-          <input id="start" type="text" placeholder="例：京都駅 / 住所 / 施設名" />
-          <div class="btn-row">
-            <button id="homeBtn" type="button" class="sub">自宅</button>
-            <button id="locBtn"  type="button" class="sub">現在地</button>
-          </div>
+    <div class="field">
+      <label for="start">出発地</label>
+      <div class="input-wrap">
+        <input id="start" type="text" placeholder="例：京都駅 / 住所 / 施設名" />
+        <div class="btn-row">
+          <button id="homeBtn" class="sub">自宅</button>
+          <button id="locBtn" class="sub">現在地</button>
         </div>
       </div>
+    </div>
 
-      <div class="field">
-        <label for="dest">到着地</label>
-        <div class="input-wrap">
-          <input id="dest" type="text" placeholder="例：道の駅 美山" />
-        </div>
+    <div class="field">
+      <label for="dest">到着地</label>
+      <div class="input-wrap">
+        <input id="dest" type="text" placeholder="例：道の駅 美山" />
       </div>
     </div>
 
     <button id="routeBtn" class="primary">ルート作成</button>
-    <div class="share-row">
-      <button class="share line" id="shareLineInline">LINEでルートを共有</button>
-    </div>
   </section>
 
   <script>
-    // ====== Google Maps 変数 ======
     let map, directionsService, directionsRenderer;
-    let originLatLng = null; // 現在地保持
-    let lastOriginParam = null; // 共有用（API1リンク）
-    let lastDestParam = null;   // 共有用（API1リンク）
+    let originLatLng = null;
+    let lastOriginParam = null;
+    let lastDestParam = null;
 
-    // ====== 地図初期化（callbackで呼ばれるようグローバルに） ======
-    window.initMap = function initMap() {
-      map = new google.maps.Map(document.getElementById('map'), {
-        center: { lat: 35.0116, lng: 135.7681 }, // 京都
-        zoom: 9,
+    // Google Maps 初期化
+    window.initMap = function () {
+      map = new google.maps.Map(document.getElementById("map"), {
+        center: { lat: 35.0116, lng: 135.7681 },
+        zoom: 8,
       });
       directionsService = new google.maps.DirectionsService();
-      directionsRenderer = new google.maps.DirectionsRenderer({ suppressMarkers: false });
+      directionsRenderer = new google.maps.DirectionsRenderer();
       directionsRenderer.setMap(map);
     };
 
-    // ====== DOMイベント ======
-    document.addEventListener('DOMContentLoaded', () => {
-      const startEl = document.getElementById('start');
-      const destEl  = document.getElementById('dest');
+    // ページが読み込まれたら
+    document.addEventListener("DOMContentLoaded", () => {
+      const startEl = document.getElementById("start");
+      const destEl = document.getElementById("dest");
 
       // 現在地
-      document.getElementById('locBtn').addEventListener('click', () => {
-        if (!navigator.geolocation) { alert('この端末は現在地取得に対応していません。'); return; }
+      document.getElementById("locBtn").addEventListener("click", () => {
+        if (!navigator.geolocation) { alert("この端末は現在地取得に対応していません。"); return; }
         navigator.geolocation.getCurrentPosition(
-          (pos) => {
+          pos => {
             const { latitude, longitude } = pos.coords;
             originLatLng = { lat: latitude, lng: longitude };
-            startEl.value = '現在地（GPS）';
+            startEl.value = "現在地（GPS）";
           },
-          (err) => {
-            console.error(err);
-            alert('現在地を取得できませんでした。位置情報の許可をご確認ください。');
-          },
+          err => { alert("現在地を取得できませんでした。位置情報の許可を確認してください。"); },
           { enableHighAccuracy: true, timeout: 10000 }
         );
       });
 
       // 自宅
-      document.getElementById('homeBtn').addEventListener('click', () => {
-        const home = localStorage.getItem('homeAddress');
+      document.getElementById("homeBtn").addEventListener("click", () => {
+        const home = localStorage.getItem("homeAddress");
         if (home) {
           originLatLng = null;
           startEl.value = home;
         } else {
-          alert('自宅が未登録です。設定メニュー等から登録してください。');
+          alert("自宅が未登録です。設定メニューから登録してください。");
         }
       });
 
       // ルート作成
-      document.getElementById('routeBtn').addEventListener('click', () => {
+      document.getElementById("routeBtn").addEventListener("click", () => {
         const startVal = startEl.value.trim();
-        const destVal  = destEl.value.trim();
-        if (!destVal) { alert('到着地を入力してください。'); return; }
+        const destVal = destEl.value.trim();
+        if (!destVal) { alert("到着地を入力してください。"); return; }
 
         const origin = originLatLng || (startVal ? startVal : null);
-        if (!origin) { alert('出発地を入力するか、現在地ボタンを押してください。'); return; }
+        if (!origin) { alert("出発地を入力するか、現在地を使用してください。"); return; }
 
-        const useHighways = document.getElementById('chkHighways').checked; // true=使う
-        const useTolls    = document.getElementById('chkTolls').checked;    // true=使う
+        const useHighways = document.getElementById("chkHighways").checked;
+        const useTolls = document.getElementById("chkTolls").checked;
 
         buildRoute(origin, destVal, { useHighways, useTolls });
-
-        // 共有用に保存（Google Mapsリンク生成に使用）
         lastOriginParam = originLatLng ? `${originLatLng.lat},${originLatLng.lng}` : startVal;
-        lastDestParam   = destVal;
+        lastDestParam = destVal;
       });
 
       // サブメニュー開閉
-      const drawer   = document.getElementById('drawer');
-      const backdrop = document.getElementById('backdrop');
-      const openBtn  = document.getElementById('openDrawer');
-      const closeBtn = document.getElementById('closeDrawer');
+      const drawer = document.getElementById("drawer");
+      const backdrop = document.getElementById("backdrop");
+      document.getElementById("openDrawer").addEventListener("click", () => {
+        drawer.classList.add("open");
+        backdrop.classList.add("show");
+      });
+      document.getElementById("closeDrawer").addEventListener("click", () => {
+        drawer.classList.remove("open");
+        backdrop.classList.remove("show");
+      });
+      backdrop.addEventListener("click", () => {
+        drawer.classList.remove("open");
+        backdrop.classList.remove("show");
+      });
 
-      function openDrawer(){ drawer.classList.add('open'); backdrop.classList.add('show'); }
-      function closeDrawer(){ drawer.classList.remove('open'); backdrop.classList.remove('show'); }
-      openBtn.addEventListener('click', openDrawer);
-      closeBtn.addEventListener('click', closeDrawer);
-      backdrop.addEventListener('click', closeDrawer);
-
-      // LINE共有（サブメニューのボタン＆下段のボタン）
-      document.getElementById('shareLine').addEventListener('click', () => shareRoute());
-      document.getElementById('shareLineInline').addEventListener('click', () => shareRoute());
+      // LINE共有
+      document.getElementById("shareLine").addEventListener("click", shareRoute);
     });
 
-    // ====== ルート作成 ======
-    function buildRoute(origin, destination, opts){
-      const avoidHighways = opts && !opts.useHighways; // 「使う」OFFなら回避しない → useHighways=false → avoidHighways=true
-      const avoidTolls    = opts && !opts.useTolls;
+    function buildRoute(origin, destination, opts) {
+      const avoidHighways = opts && !opts.useHighways;
+      const avoidTolls = opts && !opts.useTolls;
 
       const request = {
         origin,
         destination,
         travelMode: google.maps.TravelMode.DRIVING,
-        avoidHighways: !!avoidHighways,
-        avoidTolls: !!avoidTolls,
+        avoidHighways,
+        avoidTolls,
       };
 
       directionsService.route(request, (res, status) => {
-        if (status === 'OK') {
+        if (status === "OK") {
           directionsRenderer.setDirections(res);
         } else {
-          alert('ルートを取得できませんでした：' + status);
-          console.error(status, res);
+          alert("ルートを取得できませんでした：" + status);
         }
       });
     }
 
-    // ====== ルート共有（Google Mapsリンクを作ってLINEへ） ======
-    function shareRoute(){
+    function shareRoute() {
       if (!lastDestParam) {
-        alert('まず「ルート作成」で出発地・到着地を設定してください。');
+        alert("まずルートを作成してください。");
         return;
       }
-
-      // 現在のチェック状態を反映（avoidパラメータに変換）
-      const useHighways = document.getElementById('chkHighways').checked;
-      const useTolls    = document.getElementById('chkTolls').checked;
-
       const avoids = [];
-      if (!useHighways) avoids.push('highways');
-      if (!useTolls)    avoids.push('tolls');
+      if (!document.getElementById("chkHighways").checked) avoids.push("highways");
+      if (!document.getElementById("chkTolls").checked) avoids.push("tolls");
 
       const params = new URLSearchParams({
-        api: '1',
-        origin: lastOriginParam || '',
+        api: "1",
+        origin: lastOriginParam || "",
         destination: lastDestParam,
-        travelmode: 'driving'
+        travelmode: "driving",
       });
-      if (avoids.length) params.set('avoid', avoids.join(',')); // 例：avoid=highways,tolls
-
+      if (avoids.length) params.set("avoid", avoids.join(","));
       const gmapsUrl = `https://www.google.com/maps/dir/?${params.toString()}`;
+
       const text = `ツーリングルートを共有します！\n${gmapsUrl}`;
-
-      // Web Share API（使える端末ならこちらが自然）
-      if (navigator.share) {
-        navigator.share({ title: 'ツーリングルート', text, url: gmapsUrl })
-          .catch(err => console.warn('share canceled or failed:', err));
-        return;
-      }
-
-      // LINE共有リンク（フォールバック）
       const encoded = encodeURIComponent(text);
-      const lineUrl = `https://line.me/R/msg/text/?${encoded}`;
-      window.open(lineUrl, '_blank');
+      window.open(`https://line.me/R/msg/text/?${encoded}`, "_blank");
     }
   </script>
 
-  <!-- Google Maps API（※YOUR_API_KEY を差し替え）-->
-<script async src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBlN9ik-Y3CpEy3Uw9hXfBq0m2AoZWx_oM&callback=initMap"></script>
-
+  <!-- あなたのAPIキー付き -->
+  <script async src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBlN9ik-Y3CpEy3Uw9hXfBq0m2AoZWx_oM&callback=initMap"></script>
 </body>
 </html>
-
