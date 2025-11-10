@@ -5,343 +5,235 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>ライドツーリングツール（LINE × Google Maps）</title>
   <style>
-    :root{
-      --navy:#1f4070; --accent:#06c755; --ink:#0f172a; --muted:#6b7280;
-      --card:#ffffff; --shadow:0 6px 24px rgba(0,0,0,.16);
+    html, body {
+      height: 100%;
+      margin: 0;
+      font-family: sans-serif;
     }
-    html,body{height:100%;margin:0;background:#f5f7fb;color:var(--ink);
-      font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Hiragino Kaku Gothic ProN","Noto Sans JP","Yu Gothic UI",sans-serif}
-    #map{width:100%;height:100vh}
 
-    /* ===== AppBar（上） ===== */
-    .appbar{
-      position:fixed;inset:0 0 auto 0;height:72px;background:var(--navy);color:#fff;z-index:1002;
-      display:flex;align-items:center;justify-content:space-between;padding:0 12px 8px;
-      box-shadow:0 2px 18px rgba(0,0,0,.25);
-      clip-path: path("M0,0 H1000 V56 Q980,72 940,72 H60 Q20,72 0,56 Z");
+    header {
+      padding: 10px 16px;
+      background: #06c755;
+      color: white;
     }
-    .row{display:flex;align-items:center;gap:10px}
-    .iconbtn{width:36px;height:36px;border-radius:18px;background:rgba(255,255,255,.12);
-      display:grid;place-items:center;border:none;color:#fff;cursor:pointer}
-    .home-chip{border-radius:16px;padding:8px 12px;background:rgba(255,255,255,.14);font-size:14px;cursor:pointer}
 
-    /* ===== 入力パネル（出発/目的地） ===== */
-    .inputs{
-      position:fixed;left:12px;right:12px;top:70px;z-index:1001;
-      display:grid;gap:8px;grid-template-columns:1fr auto;
+    h1 {
+      font-size: 18px;
+      margin: 0;
     }
-    .pill{grid-column:1/-1;display:flex;align-items:center;gap:8px;background:#fff;border-radius:24px;
-      padding:10px 14px;box-shadow:var(--shadow)}
-    .pill label{font-size:12px;color:var(--muted);padding:4px 8px;background:#f3f4f6;border-radius:12px}
-    .pill input{border:none;outline:none;flex:1;font-size:15px;background:transparent;min-width:60px}
-    .swap{grid-column:2/3;grid-row:1/3;align-self:center;width:42px;height:42px;border-radius:21px;border:none;background:#fff;
-      box-shadow:var(--shadow);cursor:pointer}
 
-    /* ===== ルート作成タブ ===== */
-    .route-tab{
-      position:fixed;left:50%;top:136px;transform:translateX(-50%);
-      background:var(--navy);color:#fff;border-radius:18px 18px 24px 24px;
-      padding:10px 18px;z-index:1001;box-shadow:var(--shadow);display:flex;gap:6px;align-items:center
+    #map {
+      width: 100%;
+      height: 60vh;
     }
-    .route-menu{border:none;background:transparent;color:#fff;font-weight:700;font-size:18px;cursor:pointer}
 
-    /* ===== 右のズーム/右下現在地 ===== */
-    .zoom-col{position:fixed;right:12px;top:180px;z-index:1001;display:flex;flex-direction:column;gap:10px}
-    .zoom-btn{width:48px;height:48px;border-radius:12px;background:#fff;border:none;box-shadow:var(--shadow);font-size:24px;cursor:pointer}
-    .loc-btn{position:fixed;right:12px;bottom:18px;z-index:1001;width:62px;height:62px;border-radius:31px;background:#fff;border:none;
-      box-shadow:var(--shadow);cursor:pointer;display:grid;place-items:center;font-size:22px}
-
-    /* ===== 左のオープナー（＞） ===== */
-    .drawer-open{position:fixed;left:8px;top:180px;z-index:1001;width:36px;height:56px;border:none;border-radius:18px;
-      background:#fff;box-shadow:var(--shadow);cursor:pointer}
-
-    /* ===== 左から出るサブメニュー ===== */
-    .drawer{
-      position:fixed;left:0;top:0;bottom:0;width:300px;background:#fff;z-index:1100;
-      transform:translateX(-100%);transition:transform .25s ease;box-shadow:var(--shadow);padding:16px 14px 20px
+    /* ===== パネルエリア ===== */
+    .panel {
+      padding: 12px 16px;
+      background: #fff;
     }
-    .drawer.open{transform:translateX(0)}
-    .drawer h3{margin:4px 0 12px 0}
-    .opt{display:flex;align-items:center;gap:10px;margin:10px 0}
-    .opt input{width:18px;height:18px}
-    .primary{width:100%;border:none;border-radius:12px;background:var(--accent);color:#fff;padding:12px 14px;font-size:16px;cursor:pointer}
-    .muted{border:none;background:#f3f4f6;color:#111;padding:8px 10px;border-radius:10px;cursor:pointer}
 
-    /* ===== 雨雲コントローラ（継続） ===== */
-    #rvCtl{
-      position:fixed;left:12px;bottom:12px;z-index:1002;background:#fff;border-radius:14px;padding:12px 14px;
-      box-shadow:var(--shadow);min-width:240px;display:none
+    label {
+      font-size: 14px;
+      color: #333;
     }
-    #rvCtl header{font-weight:700;margin-bottom:6px}
-    #rvCtl .row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
-    #rvCtl button{border:none;border-radius:10px;padding:8px 10px;background:var(--accent);color:#fff;cursor:pointer}
-    #rvCtl button.gray{background:#9ca3af}
-    #rvCtl input[type="range"]{width:130px}
+
+    .form-grid {
+      display: grid;
+      gap: 12px;
+      grid-template-columns: 1fr 1fr;
+    }
+
+    @media (max-width: 768px) {
+      .form-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .field {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .input-wrap {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+
+    .input-wrap input {
+      flex: 1 1 220px;
+      min-width: 0;
+      padding: 10px;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+    }
+
+    .btn-row {
+      display: flex;
+      gap: 8px;
+      flex: 0 0 auto;
+    }
+
+    button.sub {
+      padding: 9px 12px;
+      border: 1px solid #ddd;
+      background: #f7f7f7;
+      border-radius: 8px;
+      font-size: 14px;
+      cursor: pointer;
+    }
+
+    button.sub:hover {
+      background: #e6e6e6;
+    }
+
+    .primary {
+      width: 100%;
+      margin-top: 10px;
+      padding: 12px 16px;
+      background: #06c755;
+      color: #fff;
+      border: none;
+      border-radius: 10px;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    .primary:hover {
+      background: #05b14b;
+    }
   </style>
 </head>
+
 <body>
-  <!-- App bar -->
-  <div class="appbar">
-    <div class="row">
-      <button class="iconbtn" id="btnMenu" aria-label="メニュー">☰</button>
-      <div class="home-chip" id="btnHome">自宅</div>
-    </div>
-    <div></div>
-  </div>
+  <header>
+    <h1>ライドツーリングツール（LINE × Google Maps）</h1>
+  </header>
 
-  <!-- 入力（出発/目的地） -->
-  <div class="inputs">
-    <div class="pill">
-      <label>出発地</label>
-      <input id="start" placeholder="例：現在地 / 京都駅">
-    </div>
-    <div class="pill">
-      <label>目的地</label>
-      <input id="end" placeholder="例：美山 かやぶきの里">
-    </div>
-    <button class="swap" id="btnSwap" title="入れ替え">⇅</button>
-  </div>
-
-  <!-- ルート作成 -->
-  <div class="route-tab">
-    <button class="route-menu" id="makeRoute">ルート作成 ▾</button>
-  </div>
-
-  <!-- Map -->
+  <!-- 地図表示エリア -->
   <div id="map"></div>
 
-  <!-- 右：ズーム & 現在地 -->
-  <div class="zoom-col">
-    <button class="zoom-btn" id="zoomIn">＋</button>
-    <button class="zoom-btn" id="zoomOut">－</button>
-  </div>
-  <button class="loc-btn" id="btnLocate" title="現在地へ">➤</button>
+  <!-- 入力フォームエリア -->
+  <section class="panel">
+    <div class="form-grid">
+      <!-- 出発地 -->
+      <div class="field">
+        <label for="start">出発地</label>
+        <div class="input-wrap">
+          <input id="start" type="text" placeholder="例：京都駅 / 住所 / 施設名" />
+          <div class="btn-row">
+            <button id="homeBtn" type="button" class="sub">自宅</button>
+            <button id="locBtn" type="button" class="sub">現在地</button>
+          </div>
+        </div>
+      </div>
 
-  <!-- 左：オープナー（＞） -->
-  <button class="drawer-open" id="btnDrawer">&gt;</button>
-
-  <!-- サブメニュー（左から） -->
-  <aside class="drawer" id="drawer">
-    <div style="display:flex;justify-content:space-between;align-items:center">
-      <h3>サブメニュー</h3>
-      <button class="muted" id="btnDrawerClose">閉じる</button>
+      <!-- 到着地 -->
+      <div class="field">
+        <label for="dest">到着地</label>
+        <div class="input-wrap">
+          <input id="dest" type="text" placeholder="例：道の駅 美山" />
+        </div>
+      </div>
     </div>
 
-    <button class="primary" id="shareBtn">LINEでルートを共有</button>
-
-    <div class="opt">
-      <input type="checkbox" id="useHighways" checked>
-      <label for="useHighways">高速道路を使う</label>
-    </div>
-    <div class="opt">
-      <input type="checkbox" id="useTolls" checked>
-      <label for="useTolls">有料道路を使う</label>
-    </div>
-
-    <!-- 必要なら雨雲トグルをここにも追加できます -->
-    <div style="margin-top:12px">
-      <button class="muted" id="btnRain">雨雲レーダー</button>
-    </div>
-  </aside>
-
-  <!-- 雨雲レーダーUI -->
-  <div id="rvCtl">
-    <header>雨雲レーダー <span class="stamp" id="rvStamp">--:--</span></header>
-    <div class="row">
-      <button id="rvPlay">▶︎ 再生</button>
-      <button id="rvPrev">◀︎</button>
-      <button id="rvNext">▶︎</button>
-      <button id="rvOff" class="gray">OFF</button>
-    </div>
-    <div class="row" style="margin-top:6px">
-      透明度 <input id="rvOpacity" type="range" min="20" max="100" value="60">
-      <span id="rvOpacityVal">60%</span>
-    </div>
-  </div>
-
-  <!-- Maps -->
-  <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBlN9ik-Y3CpEy3Uw9hXfBq0m2AoZWx_oM&libraries=places&language=ja&region=JP&callback=initMap" async defer></script>
+    <button id="routeBtn" class="primary">ルート作成</button>
+  </section>
 
   <script>
-    let map, directionsService, directionsRenderer;
-    let radarTimestamps=[], radarIndex=0, radarTimer=null, radarLayer=null, radarOpacity=0.6;
+    // Google Maps API 用変数
+    let map;
+    let directionsService;
+    let directionsRenderer;
+    let originLatLng = null;
 
-    function initMap(){
-      map=new google.maps.Map(document.getElementById('map'),{
-        center:{lat:35.0116,lng:135.7681},zoom:12,streetViewControl:false,mapTypeControl:false,fullscreenControl:false
+    // 地図初期化
+    function initMap() {
+      map = new google.maps.Map(document.getElementById("map"), {
+        center: { lat: 35.0116, lng: 135.7681 }, // 京都市
+        zoom: 8,
       });
-      directionsService=new google.maps.DirectionsService();
-      directionsRenderer=new google.maps.DirectionsRenderer({map});
 
-      // オートコンプリート
-      new google.maps.places.Autocomplete(document.getElementById('start'),{fields:["geometry","name"]});
-      new google.maps.places.Autocomplete(document.getElementById('end'),{fields:["geometry","name"]});
-
-      // ズーム
-      document.getElementById('zoomIn').onclick=()=>map.setZoom(map.getZoom()+1);
-      document.getElementById('zoomOut').onclick=()=>map.setZoom(map.getZoom()-1);
-
-      // 現在地
-      document.getElementById('btnLocate').onclick=getCurrentPosition;
-      document.getElementById('btnHome').onclick=getCurrentPosition;
-
-      // 入れ替え
-      document.getElementById('btnSwap').onclick=()=>{
-        const s=document.getElementById('start'), e=document.getElementById('end');
-        [s.value,e.value]=[e.value,s.value];
-      };
-
-      // ルート作成
-      document.getElementById('makeRoute').onclick=buildRoute;
-
-      // サブメニュー開閉
-      const drawer=document.getElementById('drawer');
-      document.getElementById('btnDrawer').onclick=()=>drawer.classList.add('open');
-      document.getElementById('btnDrawerClose').onclick=()=>drawer.classList.remove('open');
-
-      // 共有
-      document.getElementById('shareBtn').onclick=shareRoute;
-
-      // 雨雲
-      document.getElementById('btnRain').onclick=toggleRadar;
-      document.getElementById('rvPlay').addEventListener('click',(e)=>togglePlay(e.currentTarget));
-      document.getElementById('rvPrev').addEventListener('click',()=>stepFrame(-1));
-      document.getElementById('rvNext').addEventListener('click',()=>stepFrame(1));
-      document.getElementById('rvOff').addEventListener('click',turnRadarOff);
-      document.getElementById('rvOpacity').addEventListener('input',(e)=>{
-        const v=Number(e.target.value); document.getElementById('rvOpacityVal').textContent=v+'%';
-        radarOpacity=v/100; if(radarLayer) rebuildCurrentRadarLayer();
-      });
+      directionsService = new google.maps.DirectionsService();
+      directionsRenderer = new google.maps.DirectionsRenderer();
+      directionsRenderer.setMap(map);
     }
 
-    function getCurrentPosition(){
-      if(!navigator.geolocation){alert('位置情報が使えません');return;}
-      navigator.geolocation.getCurrentPosition(pos=>{
-        const p={lat:pos.coords.latitude,lng:pos.coords.longitude};
-        map.panTo(p); map.setZoom(Math.max(map.getZoom(),14));
-        const s=document.getElementById('start'); s.value=`${p.lat.toFixed(6)},${p.lng.toFixed(6)}`;
-      },()=>alert('現在地の取得に失敗しました'));
-    }
-
-    async function buildRoute(){
-      const startVal=document.getElementById('start').value.trim();
-      const endVal=document.getElementById('end').value.trim();
-      if(!endVal){alert('目的地を入力してください');return;}
-
-      const useHighways=document.getElementById('useHighways').checked;
-      const useTolls=document.getElementById('useTolls').checked;
-
-      const req={
-        origin: startVal || '現在地',
-        destination: endVal,
-        travelMode: google.maps.TravelMode.DRIVING,
-        drivingOptions:{departureTime:new Date()},
-        avoidHighways: !useHighways,
-        avoidTolls: !useTolls,
-        provideRouteAlternatives:false
-      };
-
-      try{
-        if(!startVal && navigator.geolocation){
-          await new Promise((resolve,reject)=>{
-            navigator.geolocation.getCurrentPosition(p=>{
-              req.origin=new google.maps.LatLng(p.coords.latitude,p.coords.longitude);
-              resolve();
-            },reject,{enableHighAccuracy:true,timeout:7000});
-          });
-        }
-        const res=await directionsService.route(req);
-        directionsRenderer.setDirections(res);
-      }catch(e){ console.error(e); alert('ルート作成に失敗しました'); }
-    }
-
-    function buildMapsUrl(){
-      const s=document.getElementById('start').value.trim();
-      const e=document.getElementById('end').value.trim();
-      const useHighways=document.getElementById('useHighways').checked;
-      const useTolls=document.getElementById('useTolls').checked;
-      const avoidHighways = (!useHighways) ? 1 : 0;
-      const avoidTolls    = (!useTolls)    ? 1 : 0;
-
-      // GoogleマップのDirections URL（web）
-      const params=new URLSearchParams({
-        api:1,
-        origin: s||'Current+Location',
-        destination: e||'',
-        travelmode:'driving',
-      });
-      // GoogleマップURLにはavoidを個別指定できないため、queryでヒントを付与
-      let q=[];
-      if(avoidHighways) q.push('高速を使わない');
-      if(avoidTolls)    q.push('有料道路を使わない');
-      if(q.length) params.set('query', q.join(' '));
-      return `https://www.google.com/maps/dir/?${params.toString()}`;
-    }
-
-    async function shareRoute(){
-      const url=buildMapsUrl();
-      const text='ツーリングのルート候補です👇';
-      // Web Share → LINE(share target) or 直接LINE URL
-      if(navigator.share){
-        try{ await navigator.share({title:'ルート共有',text, url}); return;}catch{}
+    // 現在地ボタン
+    document.getElementById('locBtn').addEventListener('click', () => {
+      if (!navigator.geolocation) {
+        alert('お使いのブラウザは現在地取得に対応していません。');
+        return;
       }
-      // LINEのトーク共有（テキスト）
-      const encoded = encodeURIComponent(`${text}\n${url}`);
-      window.open(`https://line.me/R/share?text=${encoded}`, '_blank');
-    }
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          const { latitude, longitude } = pos.coords;
+          originLatLng = { lat: latitude, lng: longitude };
+          document.getElementById('start').value = '現在地（GPS）';
+        },
+        (err) => {
+          console.error(err);
+          alert('現在地を取得できませんでした。位置情報の許可を確認してください。');
+        },
+        { enableHighAccuracy: true, timeout: 10000 }
+      );
+    });
 
-    /* ===== 雨雲レーダー ===== */
-    async function toggleRadar(){
-      const ctl=document.getElementById('rvCtl');
-      if(radarLayer){ turnRadarOff(); return; }
-      try{
-        const res=await fetch('https://api.rainviewer.com/public/weather-maps.json');
-        const data=await res.json();
-        radarTimestamps=[...(data?.radar?.past||[]).map(f=>f.time),...(data?.radar?.nowcast||[]).map(f=>f.time)];
-        if(!radarTimestamps.length){ alert('雨雲データ取得失敗'); return; }
-        radarIndex=radarTimestamps.length-1;
-        fadeToFrame(radarIndex,true);
-        ctl.style.display='block';
-      }catch(e){ alert('雨雲データ取得エラー'); console.error(e); }
-    }
-    function turnRadarOff(){ stopAnimation(); map.overlayMapTypes.clear(); radarLayer=null; document.getElementById('rvCtl').style.display='none'; }
-    function tileUrl(ts){ return `https://tilecache.rainviewer.com/v2/radar/${ts}/256/{z}/{x}/{y}/2/1_1.png`; }
-    function buildLayer(ts,opacity){
-      const t=tileUrl(ts);
-      return new google.maps.ImageMapType({
-        getTileUrl:(coord,zoom)=>{ const n=1<<zoom; let x=coord.x%n; if(x<0)x+=n; return t.replace('{z}',zoom).replace('{x}',x).replace('{y}',coord.y); },
-        tileSize:new google.maps.Size(256,256), opacity:opacity
+    // 自宅ボタン
+    document.getElementById('homeBtn').addEventListener('click', () => {
+      const home = localStorage.getItem('homeAddress');
+      if (home) {
+        originLatLng = null;
+        document.getElementById('start').value = home;
+      } else {
+        alert('自宅が未登録です。設定メニューから登録してください。');
+      }
+    });
+
+    // ルート作成ボタン
+    document.getElementById('routeBtn').addEventListener('click', () => {
+      const startInput = document.getElementById('start').value.trim();
+      const destInput = document.getElementById('dest').value.trim();
+
+      if (!destInput) {
+        alert('到着地を入力してください。');
+        return;
+      }
+
+      const origin = originLatLng || (startInput ? startInput : null);
+      if (!origin) {
+        alert('出発地を入力するか、現在地ボタンを押してください。');
+        return;
+      }
+
+      buildRoute(origin, destInput);
+    });
+
+    // ルート作成関数
+    function buildRoute(origin, destination) {
+      const request = {
+        origin: origin,
+        destination: destination,
+        travelMode: google.maps.TravelMode.DRIVING,
+      };
+
+      directionsService.route(request, (res, status) => {
+        if (status === 'OK') {
+          directionsRenderer.setDirections(res);
+        } else {
+          alert('ルートを取得できませんでした：' + status);
+        }
       });
     }
-    function fadeToFrame(i,instant=false){
-      if(!radarTimestamps.length) return;
-      const ts=radarTimestamps[i];
-      const newLayer=buildLayer(ts,0);
-      map.overlayMapTypes.insertAt(0,newLayer);
+  </script>
 
-      const d=new Date(ts*1000);
-      document.getElementById('rvStamp').textContent=d.toLocaleString('ja-JP',{month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'});
-
-      const oldLayer=radarLayer; radarLayer=newLayer;
-      if(instant){ radarLayer.setOpacity(radarOpacity); if(oldLayer) map.overlayMapTypes.removeAt(1); return; }
-
-      let alpha=0;
-      const fadeTimer=setInterval(()=>{
-        alpha+=0.1;
-        radarLayer.setOpacity(radarOpacity*alpha);
-        if(oldLayer) oldLayer.setOpacity(radarOpacity*(1-alpha));
-        if(alpha>=1){ clearInterval(fadeTimer); radarLayer.setOpacity(radarOpacity);
-          if(oldLayer){ const arr=map.overlayMapTypes.getArray(); const idx=arr.indexOf(oldLayer); if(idx>=0) map.overlayMapTypes.removeAt(idx); }
-        }
-      },50);
-    }
-    function rebuildCurrentRadarLayer(){ if(radarLayer) fadeToFrame(radarIndex,true); }
-    function stepFrame(dir){ if(!radarTimestamps.length) return; radarIndex=(radarIndex+dir+radarTimestamps.length)%radarTimestamps.length; fadeToFrame(radarIndex); }
-    function togglePlay(btn){
-      if(radarTimer){ clearInterval(radarTimer); radarTimer=null; btn.textContent='▶︎ 再生'; return; }
-      btn.textContent='⏸ 一時停止'; radarTimer=setInterval(()=>stepFrame(1),380);
-    }
-    function stopAnimation(){ if(radarTimer){ clearInterval(radarTimer); radarTimer=null; } const btn=document.getElementById('rvPlay'); if(btn) btn.textContent='▶︎ 再生'; }
+  <!-- Google Maps API 読み込み（あなたのAPIキーを設定） -->
+  <script async
+    src="https://maps.googleapis.com/maps/api/js?key=YOUR_API_KEY&callback=initMap">
   </script>
 </body>
 </html>
