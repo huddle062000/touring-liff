@@ -3,344 +3,165 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>ライドツーリングツール（LINE × Google Maps）</title>
-
+  <title>ライドツーリングツール</title>
   <style>
     html, body {
       height: 100%;
       margin: 0;
-      font-family: system-ui, sans-serif;
-      overflow: hidden; /* スクロール禁止で地図全画面 */
+      font-family: "Roboto", "Noto Sans JP", sans-serif;
+      overflow: hidden;
     }
 
-    /* ===== 地図 ===== */
+    /* === 地図 === */
     #map {
       position: absolute;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100vh;
+      top: 0; left: 0;
+      width: 100%; height: 100vh;
       z-index: 1;
     }
 
-    /* ===== オーバーレイフォーム ===== */
-    .panel {
+    /* === 検索バー（Googleマップ風） === */
+    .search-container {
       position: absolute;
-      top: 10px;
+      top: 12px;
       left: 50%;
       transform: translateX(-50%);
-      background: rgba(255, 255, 255, 0.95);
       width: 90%;
-      max-width: 600px;
-      border-radius: 12px;
-      padding: 16px;
-      box-shadow: 0 4px 16px rgba(0,0,0,0.25);
+      max-width: 380px;
+      background: #fff;
+      border-radius: 30px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.25);
+      display: flex;
+      align-items: center;
+      padding: 6px 10px;
       z-index: 10;
     }
 
-    label { font-size: 14px; color: #333; }
-
-    .field {
-      display: flex;
-      flex-direction: column;
-      gap: 6px;
-      margin-bottom: 10px;
+    .search-container img {
+      width: 28px; height: 28px;
+      margin-right: 6px;
     }
 
-    .input-wrap {
-      display: flex;
-      gap: 8px;
-      align-items: center;
-      flex-wrap: wrap;
-    }
-
-    .input-wrap input {
-      flex: 1 1 200px;
-      min-width: 0;
-      padding: 10px;
-      border: 1px solid #ccc;
-      border-radius: 8px;
-    }
-
-    .btn-row {
-      display: flex;
-      gap: 8px;
-    }
-
-    button.sub {
-      padding: 9px 12px;
-      border: 1px solid #ddd;
-      background: #f7f7f7;
-      border-radius: 8px;
-      font-size: 14px;
-      cursor: pointer;
-    }
-
-    button.sub:hover { background: #eaeaea; }
-
-    .primary {
-      width: 100%;
-      margin-top: 6px;
-      padding: 12px 16px;
-      background: #06c755;
-      color: #fff;
-      border: none;
-      border-radius: 10px;
-      font-size: 16px;
-      font-weight: 600;
-      cursor: pointer;
-    }
-
-    .primary:hover { background: #05b14b; }
-
-    /* ===== サブメニュー（スライド） ===== */
-    .menu-toggle {
-      position: absolute;
-      top: 15px;
-      left: 15px;
-      z-index: 20;
-      appearance: none;
-      border: none;
-      background: #06c755;
-      color: #fff;
-      width: 38px;
-      height: 38px;
-      border-radius: 10px;
-      font-size: 18px;
-      font-weight: bold;
-      cursor: pointer;
-      box-shadow: 0 2px 6px rgba(0,0,0,0.2);
-    }
-
-    .drawer {
-      position: fixed;
-      top: 0; left: 0;
-      height: 100%;
-      width: 260px;
-      background: #fff;
-      box-shadow: 2px 0 10px rgba(0,0,0,0.2);
-      transform: translateX(-100%);
-      transition: transform 0.25s ease;
-      z-index: 30;
-      display: flex;
-      flex-direction: column;
-    }
-
-    .drawer.open { transform: translateX(0); }
-    .drawer header {
-      background: #06c755;
-      color: #fff;
-      padding: 12px 16px;
-      font-weight: bold;
-    }
-
-    .drawer .content {
-      padding: 14px 16px;
+    .search-container input {
       flex: 1;
-      display: flex;
-      flex-direction: column;
-      gap: 12px;
+      border: none;
+      outline: none;
+      font-size: 16px;
+      color: #333;
     }
 
-    .opt { display: flex; align-items: center; gap: 8px; }
-
-    .share {
-      padding: 10px 12px;
-      border: 1px solid #06c755;
-      background: #fff;
-      color: #06c755;
-      font-weight: bold;
-      border-radius: 10px;
+    .mic-btn {
+      background: none;
+      border: none;
       cursor: pointer;
+      padding: 4px;
     }
 
-    .backdrop {
-      position: fixed;
-      inset: 0;
-      background: rgba(0,0,0,0.3);
-      opacity: 0;
-      pointer-events: none;
-      transition: opacity 0.2s ease;
-      z-index: 25;
+    .mic-btn img {
+      width: 22px;
+      height: 22px;
     }
 
-    .backdrop.show {
-      opacity: 1;
-      pointer-events: auto;
+    /* === 現在地ボタン === */
+    #locateBtn {
+      position: absolute;
+      bottom: 100px;
+      right: 16px;
+      width: 56px;
+      height: 56px;
+      border-radius: 50%;
+      background: #fff;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+      border: none;
+      cursor: pointer;
+      z-index: 5;
     }
+
+    #locateBtn img {
+      width: 26px;
+      height: 26px;
+    }
+
   </style>
 </head>
-
 <body>
-  <!-- サブメニュー -->
-  <button class="menu-toggle" id="openDrawer">☰</button>
-  <aside class="drawer" id="drawer">
-    <header>サブメニュー</header>
-    <div class="content">
-      <div class="opt"><input type="checkbox" id="chkHighways"><label for="chkHighways">高速道路を使う</label></div>
-      <div class="opt"><input type="checkbox" id="chkTolls"><label for="chkTolls">有料道路を使う</label></div>
-      <button class="share" id="shareLine">LINEでルート共有</button>
-      <button class="sub" id="closeDrawer">閉じる</button>
-    </div>
-  </aside>
-  <div class="backdrop" id="backdrop"></div>
+  <!-- 検索バー -->
+  <div class="search-container">
+    <img src="https://upload.wikimedia.org/wikipedia/commons/e/e7/Google_Maps_icon_%282020%29.svg" alt="map">
+    <input id="destInput" type="text" placeholder="目的地">
+    <button class="mic-btn">
+      <img src="https://img.icons8.com/ios-filled/50/000000/microphone.png" alt="mic">
+    </button>
+  </div>
 
   <!-- 地図 -->
   <div id="map"></div>
 
-  <!-- オーバーレイフォーム -->
-  <section class="panel">
-    <div class="field">
-      <label for="start">出発地</label>
-      <div class="input-wrap">
-        <input id="start" type="text" placeholder="例：京都駅 / 住所 / 施設名" />
-        <div class="btn-row">
-          <button id="homeBtn" class="sub">自宅</button>
-          <button id="locBtn" class="sub">現在地</button>
-        </div>
-      </div>
-    </div>
-
-    <div class="field">
-      <label for="dest">到着地</label>
-      <div class="input-wrap">
-        <input id="dest" type="text" placeholder="例：道の駅 美山" />
-      </div>
-    </div>
-
-    <button id="routeBtn" class="primary">ルート作成</button>
-  </section>
+  <!-- 現在地ボタン -->
+  <button id="locateBtn">
+    <img src="https://img.icons8.com/ios-filled/50/000000/near-me.png" alt="locate">
+  </button>
 
   <script>
-    let map, directionsService, directionsRenderer;
-    let originLatLng = null;
-    let lastOriginParam = null;
-    let lastDestParam = null;
+    let map, marker;
 
-    // Google Maps 初期化
-    window.initMap = function () {
+    window.initMap = function() {
       map = new google.maps.Map(document.getElementById("map"), {
         center: { lat: 35.0116, lng: 135.7681 },
-        zoom: 8,
+        zoom: 13,
+        mapTypeControl: false,
+        streetViewControl: false,
+        fullscreenControl: false,
       });
-      directionsService = new google.maps.DirectionsService();
-      directionsRenderer = new google.maps.DirectionsRenderer();
-      directionsRenderer.setMap(map);
+
+      // 目的地入力でマーカーを立てる
+      const input = document.getElementById("destInput");
+      const autocomplete = new google.maps.places.Autocomplete(input);
+      autocomplete.bindTo("bounds", map);
+
+      autocomplete.addListener("place_changed", () => {
+        const place = autocomplete.getPlace();
+        if (!place.geometry) {
+          alert("場所が見つかりませんでした。");
+          return;
+        }
+        if (marker) marker.setMap(null);
+        marker = new google.maps.Marker({
+          position: place.geometry.location,
+          map: map,
+          title: place.name,
+        });
+        map.setCenter(place.geometry.location);
+        map.setZoom(15);
+      });
     };
 
-    // ページが読み込まれたら
-    document.addEventListener("DOMContentLoaded", () => {
-      const startEl = document.getElementById("start");
-      const destEl = document.getElementById("dest");
-
-      // 現在地
-      document.getElementById("locBtn").addEventListener("click", () => {
-        if (!navigator.geolocation) { alert("この端末は現在地取得に対応していません。"); return; }
-        navigator.geolocation.getCurrentPosition(
-          pos => {
-            const { latitude, longitude } = pos.coords;
-            originLatLng = { lat: latitude, lng: longitude };
-            startEl.value = "現在地（GPS）";
-          },
-          err => { alert("現在地を取得できませんでした。位置情報の許可を確認してください。"); },
-          { enableHighAccuracy: true, timeout: 10000 }
-        );
-      });
-
-      // 自宅
-      document.getElementById("homeBtn").addEventListener("click", () => {
-        const home = localStorage.getItem("homeAddress");
-        if (home) {
-          originLatLng = null;
-          startEl.value = home;
-        } else {
-          alert("自宅が未登録です。設定メニューから登録してください。");
-        }
-      });
-
-      // ルート作成
-      document.getElementById("routeBtn").addEventListener("click", () => {
-        const startVal = startEl.value.trim();
-        const destVal = destEl.value.trim();
-        if (!destVal) { alert("到着地を入力してください。"); return; }
-
-        const origin = originLatLng || (startVal ? startVal : null);
-        if (!origin) { alert("出発地を入力するか、現在地を使用してください。"); return; }
-
-        const useHighways = document.getElementById("chkHighways").checked;
-        const useTolls = document.getElementById("chkTolls").checked;
-
-        buildRoute(origin, destVal, { useHighways, useTolls });
-        lastOriginParam = originLatLng ? `${originLatLng.lat},${originLatLng.lng}` : startVal;
-        lastDestParam = destVal;
-      });
-
-      // サブメニュー開閉
-      const drawer = document.getElementById("drawer");
-      const backdrop = document.getElementById("backdrop");
-      document.getElementById("openDrawer").addEventListener("click", () => {
-        drawer.classList.add("open");
-        backdrop.classList.add("show");
-      });
-      document.getElementById("closeDrawer").addEventListener("click", () => {
-        drawer.classList.remove("open");
-        backdrop.classList.remove("show");
-      });
-      backdrop.addEventListener("click", () => {
-        drawer.classList.remove("open");
-        backdrop.classList.remove("show");
-      });
-
-      // LINE共有
-      document.getElementById("shareLine").addEventListener("click", shareRoute);
-    });
-
-    function buildRoute(origin, destination, opts) {
-      const avoidHighways = opts && !opts.useHighways;
-      const avoidTolls = opts && !opts.useTolls;
-
-      const request = {
-        origin,
-        destination,
-        travelMode: google.maps.TravelMode.DRIVING,
-        avoidHighways,
-        avoidTolls,
-      };
-
-      directionsService.route(request, (res, status) => {
-        if (status === "OK") {
-          directionsRenderer.setDirections(res);
-        } else {
-          alert("ルートを取得できませんでした：" + status);
-        }
-      });
-    }
-
-    function shareRoute() {
-      if (!lastDestParam) {
-        alert("まずルートを作成してください。");
+    // 現在地ボタン
+    document.getElementById("locateBtn").addEventListener("click", () => {
+      if (!navigator.geolocation) {
+        alert("このブラウザは現在地に対応していません。");
         return;
       }
-      const avoids = [];
-      if (!document.getElementById("chkHighways").checked) avoids.push("highways");
-      if (!document.getElementById("chkTolls").checked) avoids.push("tolls");
-
-      const params = new URLSearchParams({
-        api: "1",
-        origin: lastOriginParam || "",
-        destination: lastDestParam,
-        travelmode: "driving",
-      });
-      if (avoids.length) params.set("avoid", avoids.join(","));
-      const gmapsUrl = `https://www.google.com/maps/dir/?${params.toString()}`;
-
-      const text = `ツーリングルートを共有します！\n${gmapsUrl}`;
-      const encoded = encodeURIComponent(text);
-      window.open(`https://line.me/R/msg/text/?${encoded}`, "_blank");
-    }
+      navigator.geolocation.getCurrentPosition(
+        pos => {
+          const { latitude, longitude } = pos.coords;
+          const myLatLng = { lat: latitude, lng: longitude };
+          map.setCenter(myLatLng);
+          map.setZoom(15);
+          if (marker) marker.setMap(null);
+          marker = new google.maps.Marker({
+            position: myLatLng,
+            map: map,
+            title: "現在地",
+          });
+        },
+        () => alert("現在地を取得できませんでした。"),
+        { enableHighAccuracy: true }
+      );
+    });
   </script>
 
-  <!-- あなたのAPIキー付き -->
-  <script async src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBlN9ik-Y3CpEy3Uw9hXfBq0m2AoZWx_oM&callback=initMap"></script>
+  <!-- Google Maps API（Places含む） -->
+  <script async src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBlN9ik-Y3CpEy3Uw9hXfBq0m2AoZWx_oM&callback=initMap&libraries=places"></script>
 </body>
 </html>
