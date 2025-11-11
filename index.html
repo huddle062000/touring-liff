@@ -20,6 +20,22 @@
   .logo-bike{ width:26px; height:26px; flex:0 0 auto; }
   #destInput{ flex:1; border:none; outline:none; background:transparent; font-size:16px; color:#333; }
 
+  .quick-buttons{ margin-top:10px; display:flex; flex-wrap:wrap; gap:8px; }
+  .quick-buttons button{
+    flex:1 1 calc(50% - 8px);
+    min-width:calc(50% - 8px);
+    padding:10px 14px;
+    border:none;
+    border-radius:999px;
+    background:rgba(255,255,255,.95);
+    box-shadow:0 2px 6px rgba(0,0,0,.15);
+    font-size:14px; font-weight:600; color:#222;
+    cursor:pointer;
+    transition:background .2s, transform .2s;
+  }
+  .quick-buttons button:hover{ background:#eef4ff; transform:translateY(-1px); }
+  .quick-buttons button:active{ transform:translateY(0); }
+
   /* 候補ドロップダウン（名称のみ表示） */
   .suggest{ margin-top:6px; background:#fff; border-radius:14px; overflow:hidden; box-shadow:0 6px 16px rgba(0,0,0,.25); }
   .hidden{ display:none; }
@@ -48,6 +64,12 @@
     </svg>
     <input id="destInput" type="text" placeholder="目的地" autocomplete="off">
   </div>
+  <div class="quick-buttons" aria-label="クイック検索">
+    <button type="button" id="btnHome">自宅</button>
+    <button type="button" id="btnFood">飲食店</button>
+    <button type="button" id="btnGas">ガソリンスタンド</button>
+    <button type="button" id="btnMichi">道の駅</button>
+  </div>
   <div id="suggestBox" class="suggest hidden"><ul id="suggestList"></ul></div>
 </div>
 
@@ -61,6 +83,7 @@
 
 <script>
 let map, marker;
+let categoryMarkers = [];
 let placesService, autocompleteService, sessionToken;
 let activeIndex = -1;
 
@@ -75,6 +98,7 @@ window.initMap = function(){
 
   setupSearch();
   setupLocate();
+  setupCategoryButtons();
 };
 
 /* 検索：名称だけの候補を自前描画（住所は表示しない） */
@@ -169,7 +193,8 @@ function textSearchFallback(query){
 
 /* ピン設置 */
 function dropPin(latlng, title){
-  if(marker) marker.setMap(null);
+  clearCategoryMarkers();
+  clearMainMarker();
   marker = new google.maps.Marker({ map, position: latlng, title: title||'目的地' });
   map.panTo(latlng); map.setZoom(15);
 }
@@ -184,6 +209,86 @@ function setupLocate(){
       { enableHighAccuracy:true, timeout:10000 }
     );
   });
+}
+
+function setupCategoryButtons(){
+  const actions = {
+    btnHome: handleHomeButton,
+    btnFood: ()=> searchCategory({ label:'飲食店', type:'restaurant', radius:4000 }),
+    btnGas: ()=> searchCategory({ label:'ガソリンスタンド', type:'gas_station', radius:6000 }),
+    btnMichi: ()=> searchCategory({ label:'道の駅', mode:'text', query:'道の駅', radius:50000 })
+  };
+  Object.entries(actions).forEach(([id, handler])=>{
+    const el = document.getElementById(id);
+    if(el) el.addEventListener('click', handler);
+  });
+}
+
+function handleHomeButton(){
+  clearCategoryMarkers();
+  if(!navigator.geolocation){ alert('この端末は現在地取得に対応していません。'); return; }
+  navigator.geolocation.getCurrentPosition(
+    pos => dropPin({ lat:pos.coords.latitude, lng:pos.coords.longitude }, '自宅'),
+    ()=> alert('現在地を取得できませんでした。位置情報の許可をご確認ください。'),
+    { enableHighAccuracy:true, timeout:10000 }
+  );
+}
+
+function searchCategory({ label, type, query, keyword, mode='nearby', radius=5000 }){
+  clearCategoryMarkers();
+  clearMainMarker();
+  const base = { location: map.getCenter(), radius };
+  const callback = (results, status)=>{
+    if(status===google.maps.places.PlacesServiceStatus.OK && results?.length){
+      showCategoryMarkers(results, label);
+    }else{
+      alert(`${label}が見つかりませんでした。`);
+    }
+  };
+  if(mode==='text'){
+    const request = { ...base, query: query || keyword || label };
+    placesService.textSearch(request, callback);
+  }else{
+    const request = { ...base };
+    if(type) request.type = type;
+    if(keyword) request.keyword = keyword;
+    placesService.nearbySearch(request, callback);
+  }
+}
+
+function showCategoryMarkers(results, fallbackLabel){
+  const bounds = new google.maps.LatLngBounds();
+  let hasLocation = false;
+  results.slice(0, 12).forEach(place=>{
+    if(!place.geometry?.location) return;
+    hasLocation = true;
+    const title = place.name || fallbackLabel;
+    const m = new google.maps.Marker({ map, position: place.geometry.location, title });
+    categoryMarkers.push(m);
+    bounds.extend(place.geometry.location);
+  });
+  if(!hasLocation){
+    alert(`${fallbackLabel}が見つかりませんでした。`);
+    return;
+  }
+  if(categoryMarkers.length===1){
+    map.panTo(categoryMarkers[0].getPosition());
+    map.setZoom(15);
+  }else{
+    map.fitBounds(bounds);
+  }
+}
+
+function clearCategoryMarkers(){
+  categoryMarkers.forEach(m=>m.setMap(null));
+  categoryMarkers = [];
+}
+
+function clearMainMarker(){
+  if(marker){
+    marker.setMap(null);
+    marker = null;
+  }
 }
 
 /* XSSガード */
